@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>日本製鉄 総合職 キャリア・資産形成シミュレーター</title>
+  
+  <!-- パスワード認証スクリプト（認証成功時のみ表示） -->
+  <script>
+    (function() {
+      const correctPass = "0150";
+      const inputPass = prompt("閲覧パスワードを入力してください:");
+      if (inputPass !== correctPass) {
+        alert("認証に失敗しました。アクセスを拒否します。");
+        document.write("<body style='background:#0f172a;color:#f8fafc;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;'><h2>🔒 アクセスが拒否されました</h2><p style='color:#94a3b8;'>正しいパスワードを入力して再読み込みしてください。</p></body>");
+        window.stop();
+      }
+    })();
+  </script>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    @media print {
+      body { background-color: #ffffff !important; padding: 0 !important; color: #000000 !important; }
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+      .page-break-before { page-break-before: always; }
+      .avoid-break { page-break-inside: avoid !important; }
+      .card { border: 1px solid #cbd5e1 !important; box-shadow: none !important; margin-bottom: 1rem !important; }
+      table { font-size: 9.5px !important; }
+      th, td { padding: 4px 6px !important; }
+    }
+    .print-only { display: none; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 p-3 md:p-8 font-sans">
+  <div class="max-w-7xl mx-auto space-y-6">
+
+    <!-- 印刷用ヘッダー（PDF出力時のみ表示） -->
+    <div class="print-only border-b pb-3 mb-3">
+      <h1 class="text-2xl font-bold text-slate-900">日本製鉄 総合職 ライフプラン＆資産形成シミュレーション レポート</h1>
+      <p class="text-xs text-slate-500 mt-1">出力日時: <span id="printDate"></span> | 対象: 総合職（修士了・主査キャリアモデル）</p>
+    </div>
+
+    <!-- Web操作用ヘッダー -->
+    <header class="no-print bg-white p-5 md:p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div>
+        <h1 class="text-xl md:text-2xl font-bold text-slate-900">日本製鉄 総合職 キャリア＆資産形成シミュレーター</h1>
+        <p class="text-xs md:text-sm text-slate-600 mt-1">昇給テーブル自由編集 / フェーズ入替・詳細支出 / 資産推移 / A4 PDF出力対応</p>
+      </div>
+      <div class="flex flex-wrap gap-2 w-full md:w-auto">
+        <button onclick="window.print()" class="flex-1 md:flex-initial bg-slate-800 hover:bg-slate-900 text-white text-xs md:text-sm font-semibold py-2.5 px-4 rounded-lg shadow transition flex items-center justify-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+          PDF・印刷出力
+        </button>
+        <button onclick="calculate()" class="flex-1 md:flex-initial bg-blue-600 hover:bg-blue-700 text-white text-xs md:text-sm font-bold py-2.5 px-5 rounded-lg shadow transition">
+          再計算・保存
+        </button>
+      </div>
+    </header>
+
+    <!-- 重要サマリー KPI カード -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 avoid-break">
+      <div class="card bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <span class="text-xs text-slate-500 font-medium">最終到達 総純資産</span>
+        <div id="kpiFinalAsset" class="text-lg md:text-2xl font-bold text-blue-600 mt-1">¥0</div>
+        <span id="kpiFinalYearText" class="text-[10px] text-slate-400">計算終了年時点</span>
+      </div>
+      <div class="card bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <span class="text-xs text-slate-500 font-medium">最終到達 新NISA残高</span>
+        <div id="kpiFinalNisa" class="text-lg md:text-2xl font-bold text-indigo-600 mt-1">¥0</div>
+        <span class="text-[10px] text-slate-400">複利運用込み評価額</span>
+      </div>
+      <div class="card bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <span class="text-xs text-slate-500 font-medium">期間内 最低普通預金</span>
+        <div id="kpiMinCash" class="text-lg md:text-2xl font-bold text-emerald-600 mt-1">¥0</div>
+        <span id="kpiMinCashYear" class="text-[10px] text-slate-400">キャッシュの底</span>
+      </div>
+      <div class="card bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <span class="text-xs text-slate-500 font-medium">生涯手取り vs 総支出</span>
+        <div id="kpiTotalFlow" class="text-xs md:text-sm font-bold text-slate-700 mt-1">¥0 / ¥0</div>
+        <span id="kpiSavingsRate" class="text-[10px] text-blue-500 font-semibold">平均年間貯蓄余力: 0%</span>
+      </div>
+    </div>
+
+    <!-- 印刷専用：設定前提・フェーズサマリー枠 -->
+    <div class="print-only card bg-white p-4 rounded-xl border border-slate-300 text-xs avoid-break">
+      <h3 class="font-bold text-slate-900 border-b pb-1 mb-2">【シミュレーション計算前提＆ライフステージ条件】</h3>
+      <div class="grid grid-cols-4 gap-2 text-[10px] mb-3" id="printConditionSummary"></div>
+      <div class="border-t pt-2">
+        <strong class="text-[11px] block mb-1 text-slate-800">設定フェーズ一覧:</strong>
+        <div id="printPhasesSummary" class="text-[9.5px] space-y-1 text-slate-700"></div>
+      </div>
+    </div>
+
+    <!-- 入力・設定コントロールパネル（Web操作時のみ表示） -->
+    <div class="no-print space-y-6">
+
+      <!-- 基本パラメータ -->
+      <div class="bg-white p-5 md:p-6 rounded-xl shadow-sm border border-slate-200">
+        <h2 class="font-bold text-sm md:text-base border-b pb-2 text-slate-800 flex items-center gap-2">
+          <span>⚙️</span> 1. 全体前提条件（年数・ベア・賞与・NISA）
+        </h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mt-4 text-xs">
+          <div>
+            <label class="font-semibold block text-slate-700">計算年数 (年)</label>
+            <input id="calcYears" type="number" min="1" max="30" value="8" class="w-full mt-1 p-2 border rounded font-semibold text-blue-700" onchange="onCalcYearsChange()">
+          </div>
+          <div>
+            <label class="font-semibold block text-slate-700">初任給 (円/月)</label>
+            <input id="startingSalary" type="number" step="1000" value="335000" class="w-full mt-1 p-2 border rounded font-semibold" onchange="onStartingSalaryChange()">
+          </div>
+          <div>
+            <label class="font-semibold block text-slate-700">ベースアップ率 (%/年)</label>
+            <input id="bearRate" type="number" step="0.1" value="0.0" class="w-full mt-1 p-2 border rounded" onchange="calculate()">
+          </div>
+          <div>
+            <label class="font-semibold block text-slate-700">年間賞与月数 (ヶ月)</label>
+            <input id="bonusMonths" type="number" step="0.5" value="6.0" class="w-full mt-1 p-2 border rounded" onchange="calculate()">
+          </div>
+          <div>
+            <label class="font-semibold block text-slate-700">非役職 残業時間 (h/月)</label>
+            <input id="overtimeHours" type="number" value="10" class="w-full mt-1 p-2 border rounded" onchange="calculate()">
+          </div>
+          <div>
+            <label class="font-semibold block text-slate-700">NISA(1-2年目 円/月)</label>
+            <input id="nisaInit" type="number" step="5000" value="50000" class="w-full mt-1 p-2 border rounded" onchange="calculate()">
+          </div>
+          <div>
+            <label class="font-semibold block text-slate-700">NISA(3年目~ 円/月)</label>
+            <input id="nisaLater" type="number" step="5000" value="100000" class="w-full mt-1 p-2 border rounded" onchange="calculate()">
+          </div>
+        </div>
+      </div>
+
+      <!-- 昇給テーブルエディタ -->
+      <div class="bg-white p-5 md:p-6 rounded-xl shadow-sm border border-slate-200 space-y-3">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 border-b pb-2">
+          <div>
+            <h2 class="font-bold text-sm md:text-base text-blue-700 flex items-center gap-2">
+              <span>📈</span> 2. 年次別昇給テーブル（自由編集可能）
+            </h2>
+            <p class="text-[11px] text-slate-500">年次ごとの役職名、基本月給、残業代適用の有無を直接変更できます。</p>
+          </div>
+          <button onclick="applySalarySlide()" class="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold px-3 py-1.5 rounded border border-blue-200">
+            初任給の差額を全社歴に一括スライド反映
+          </button>
+        </div>
+        <div class="overflow-x-auto max-h-72 border rounded-lg">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-100 text-slate-700 sticky top-0">
+              <tr>
+                <th class="p-2 w-20">年次(年齢)</th>
+                <th class="p-2">等級・役職名</th>
+                <th class="p-2 w-36">基準月給 (円)</th>
+                <th class="p-2 w-28 text-center">残業代対象</th>
+              </tr>
+            </thead>
+            <tbody id="salaryTableEditorBody" class="divide-y divide-slate-200 bg-white"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- フェーズ設計 ＆ 特別支出 -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- ライフステージフェーズ -->
+        <div class="bg-white p-5 md:p-6 rounded-xl shadow-sm border border-slate-200 space-y-3 flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between items-center border-b pb-2">
+              <h2 class="font-bold text-sm md:text-base text-emerald-700 flex items-center gap-2">
+                <span>🏡</span> 3. ライフステージ（フェーズ）順序＆期間
+              </h2>
+              <button onclick="addPhase()" class="bg-emerald-600 text-white text-xs px-2.5 py-1 rounded hover:bg-emerald-700 font-semibold">+ フェーズ追加</button>
+            </div>
+            <p class="text-[11px] text-slate-500 mt-1">「↑ / ↓」ボタンで順序を自由に入れ替えられます。</p>
+            <div id="phaseListContainer" class="space-y-2 mt-3 max-h-64 overflow-y-auto pr-1"></div>
+          </div>
+        </div>
+
+        <!-- 特別イベント支出 -->
+        <div class="bg-white p-5 md:p-6 rounded-xl shadow-sm border border-slate-200 space-y-3 flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between items-center border-b pb-2">
+              <h2 class="font-bold text-sm md:text-base text-purple-700 flex items-center gap-2">
+                <span>💍</span> 4. 特別イベント支出
+              </h2>
+              <button onclick="addEventRow()" class="bg-purple-600 text-white text-xs px-2.5 py-1 rounded hover:bg-purple-700 font-semibold">+ イベント追加</button>
+            </div>
+            <p class="text-[11px] text-slate-500 mt-1">結婚、車購入、親返済など単発の大きな出費。</p>
+            <div id="eventListContainer" class="space-y-2 mt-3 max-h-64 overflow-y-auto pr-1"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- フェーズごとの詳細支出エディタ -->
+      <div class="bg-white p-5 md:p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
+        <div class="border-b pb-2 flex justify-between items-center">
+          <div>
+            <h2 class="font-bold text-sm md:text-base text-emerald-800 flex items-center gap-2">
+              <span>📝</span> 5. フェーズ別・詳細支出項目の編集
+            </h2>
+            <p class="text-[11px] text-slate-500">フェーズごとの生活費・家賃・車・レジャー等の項目を月額/年額で自由に追加・変更できます。</p>
+          </div>
+        </div>
+        <div id="phaseDetailEditors" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      </div>
+
+    </div>
+
+    <!-- グラフエリア（2面） -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 card bg-white p-5 md:p-6 rounded-xl shadow-sm border border-slate-200 avoid-break">
+      <div>
+        <h3 class="font-bold text-sm md:text-base mb-3 text-slate-800">■ 資産推移（純資産・手元現金・新NISA）</h3>
+        <div class="h-64 md:h-72"><canvas id="assetChart"></canvas></div>
+      </div>
+      <div>
+        <h3 class="font-bold text-sm md:text-base mb-3 text-slate-800">■ 年間収支バランス（手取り収入 vs 年間総支出）</h3>
+        <div class="h-64 md:h-72"><canvas id="cashflowChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- テーブル1: 収入詳細分類表 -->
+    <div class="card bg-white p-5 md:p-6 rounded-xl shadow-sm border border-slate-200 overflow-x-auto avoid-break">
+      <h3 class="font-bold text-sm md:text-base mb-2 text-blue-700">■ 収入詳細分類表（月給・残業代・賞与・手取り）</h3>
+      <table class="w-full text-left text-xs border-collapse">
+        <thead>
+          <tr class="bg-blue-50 border-b text-blue-900">
+            <th class="p-2">年次(年齢)</th>
+            <th class="p-2">役職・等級</th>
+            <th class="p-2">基本月給(額面)</th>
+            <th class="p-2">月間残業代</th>
+            <th class="p-2">年間ボーナス</th>
+            <th class="p-2 font-bold text-slate-900">額面年収合計</th>
+            <th class="p-2 font-bold text-blue-800">年間想定手取り</th>
+          </tr>
+        </thead>
+        <tbody id="incomeTableBody" class="divide-y divide-slate-200"></tbody>
+      </table>
+    </div>
+
+    <div class="page-break-before"></div>
+
+    <!-- テーブル2: 支出詳細分類表 -->
+    <div class="card bg-white p-5 md:p-6 rounded-xl shadow-sm border border-slate-200 overflow-x-auto avoid-break">
+      <h3 class="font-bold text-sm md:text-base mb-2 text-emerald-700">■ 支出詳細分類表（フェーズ別生活費・NISA・特別支出）</h3>
+      <table class="w-full text-left text-xs border-collapse">
+        <thead>
+          <tr class="bg-emerald-50 border-b text-emerald-900">
+            <th class="p-2">年次(年齢)</th>
+            <th class="p-2">適用フェーズ</th>
+            <th class="p-2">年間生活費合計</th>
+            <th class="p-2">新NISA年間積立</th>
+            <th class="p-2">特別支出イベント</th>
+            <th class="p-2 font-bold text-emerald-900">年間総支出</th>
+          </tr>
+        </thead>
+        <tbody id="expenseTableBody" class="divide-y divide-slate-200"></tbody>
+      </table>
+    </div>
+
+    <!-- テーブル3: 資産・貯金詳細表 -->
+    <div class="card bg-white p-5 md:p-6 rounded-xl shadow-sm border border-slate-200 overflow-x-auto avoid-break">
+      <h3 class="font-bold text-sm md:text-base mb-2 text-purple-700">■ 資産・貯金詳細表（年間収支・現金・NISA・純資産推移）</h3>
+      <table class="w-full text-left text-xs border-collapse">
+        <thead>
+          <tr class="bg-purple-50 border-b text-purple-900">
+            <th class="p-2">年次(年齢)</th>
+            <th class="p-2 font-semibold">年間収支純増減</th>
+            <th class="p-2 font-bold text-emerald-700">手元普通預金残高</th>
+            <th class="p-2 font-bold text-indigo-700">新NISA評価残高</th>
+            <th class="p-2 font-bold text-blue-800">総純資産合計</th>
+          </tr>
+        </thead>
+        <tbody id="assetTableBody" class="divide-y divide-slate-200"></tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <script>
+    const defaultSalaryMaster = [
+      { year: 1,  age: 24, grade: "専門1級(1年目)", baseMonthly: 335000, hasOt: true },
+      { year: 2,  age: 25, grade: "専門1級(2年目)", baseMonthly: 342000, hasOt: true },
+      { year: 3,  age: 26, grade: "統括2級(3年目)", baseMonthly: 362000, hasOt: true },
+      { year: 4,  age: 27, grade: "統括2級(4年目)", baseMonthly: 370000, hasOt: true },
+      { year: 5,  age: 28, grade: "統括1級(5年目)", baseMonthly: 395000, hasOt: true },
+      { year: 6,  age: 29, grade: "統括1級(6年目)", baseMonthly: 405000, hasOt: true },
+      { year: 7,  age: 30, grade: "主査(7年目・1年)", baseMonthly: 550000, hasOt: false },
+      { year: 8,  age: 31, grade: "主査(8年目・2年)", baseMonthly: 580000, hasOt: false },
+      { year: 9,  age: 32, grade: "主査(9年目)",       baseMonthly: 590000, hasOt: false },
+      { year: 10, age: 33, grade: "主査(10年目)",      baseMonthly: 600000, hasOt: false },
+    ];
+    for (let y = 11; y <= 30; y++) {
+      defaultSalaryMaster.push({
+        year: y,
+        age: 23 + y,
+        grade: y >= 15 ? "主幹(マネジャー)" : "主査",
+        baseMonthly: y >= 15 ? 700000 + (y - 15) * 15000 : 600000 + (y - 10) * 10000,
+        hasOt: false
+      });
+    }
+
+    let salaryMaster = JSON.parse(JSON.stringify(defaultSalaryMaster));
+
+    let phases = [
+      {
+        name: "フェーズ1：独身寮生活期",
+        startYear: 1,
+        endYear: 4,
+        items: [
+          { name: "寮費・共益費", amount: 15000, type: "monthly" },
+          { name: "食費・光熱通信", amount: 95000, type: "monthly" },
+          { name: "カローラ維持費", amount: 420000, type: "yearly" },
+          { name: "レジャー(旅行/ゴルフ/飲)", amount: 1400000, type: "yearly" }
+        ]
+      },
+      {
+        name: "フェーズ2：一人暮らし賃貸期",
+        startYear: 5,
+        endYear: 6,
+        items: [
+          { name: "賃貸家賃", amount: 85000, type: "monthly" },
+          { name: "水道光熱費", amount: 15000, type: "monthly" },
+          { name: "食費・日用品", amount: 60000, type: "monthly" },
+          { name: "通信・サブスク", amount: 15000, type: "monthly" },
+          { name: "カローラ維持費", amount: 420000, type: "yearly" },
+          { name: "レジャー(旅行/ゴルフ/飲)", amount: 1400000, type: "yearly" }
+        ]
+      },
+      {
+        name: "フェーズ3：結婚・世帯生活期",
+        startYear: 7,
+        endYear: 10,
+        items: [
+          { name: "世帯住居費(本人負担)", amount: 90000, type: "monthly" },
+          { name: "水道光熱通信", amount: 25000, type: "monthly" },
+          { name: "二人分食費", amount: 80000, type: "monthly" },
+          { name: "カローラ維持費", amount: 420000, type: "yearly" },
+          { name: "レジャー(旅行/ゴルフ/飲)", amount: 1500000, type: "yearly" }
+        ]
+      }
+    ];
+
+    let customEvents = [
+      { year: 1, name: "親への返済", amount: 350000 },
+      { year: 2, name: "親返済完済", amount: 650000 },
+      { year: 5, name: "寮退去・引越敷礼", amount: 300000 },
+      { year: 6, name: "結婚費用全額自腹", amount: 2500000 }
+    ];
+
+    let prevStartingSalary = 335000;
+    function onStartingSalaryChange() {
+      const newSalary = Number(document.getElementById('startingSalary').value) || 335000;
+      salaryMaster[0].baseMonthly = newSalary;
+      renderSalaryEditor();
+      calculate();
+    }
+
+    function applySalarySlide() {
+      const newSalary = Number(document.getElementById('startingSalary').value) || 335000;
+      const diff = newSalary - prevStartingSalary;
+      if (diff !== 0) {
+        salaryMaster.forEach(item => {
+          item.baseMonthly += diff;
+        });
+        prevStartingSalary = newSalary;
+        renderSalaryEditor();
+        calculate();
+        alert(`初任給の差額 (${diff >= 0 ? '+' : ''}${diff.toLocaleString()}円) を全社歴テーブルに反映しました。`);
+      }
+    }
+
+    function onCalcYearsChange() {
+      renderSalaryEditor();
+      calculate();
+    }
+
+    function renderSalaryEditor() {
+      const calcYears = Math.min(30, Math.max(1, Number(document.getElementById('calcYears').value) || 8));
+      const tbody = document.getElementById('salaryTableEditorBody');
+      tbody.innerHTML = '';
+      for (let i = 0; i < calcYears; i++) {
+        const item = salaryMaster[i];
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="p-2 font-medium">${item.year}年目(${item.age}歳)</td>
+          <td class="p-1"><input type="text" value="${item.grade}" class="w-full p-1 border rounded text-xs" onchange="updateSalaryMaster(${i}, 'grade', this.value)"></td>
+          <td class="p-1"><input type="number" step="1000" value="${item.baseMonthly}" class="w-full p-1 border rounded text-xs text-right font-semibold" onchange="updateSalaryMaster(${i}, 'baseMonthly', this.value)"></td>
+          <td class="p-1 text-center"><input type="checkbox" ${item.hasOt ? 'checked' : ''} onchange="updateSalaryMaster(${i}, 'hasOt', this.checked)"></td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    function updateSalaryMaster(idx, field, val) {
+      if (field === 'baseMonthly') salaryMaster[idx][field] = Number(val) || 0;
+      else salaryMaster[idx][field] = val;
+      calculate();
+    }
+
+    function renderPhaseList() {
+      const container = document.getElementById('phaseListContainer');
+      container.innerHTML = '';
+      phases.forEach((p, idx) => {
+        const div = document.createElement('div');
+        div.className = "bg-slate-50 p-2.5 rounded border text-xs flex flex-wrap items-center justify-between gap-2";
+        div.innerHTML = `
+          <div class="flex items-center gap-1">
+            <button onclick="movePhaseUp(${idx})" class="p-1 bg-white hover:bg-slate-200 border rounded text-slate-700 font-bold" title="上へ移動" ${idx === 0 ? 'disabled style="opacity:0.3"' : ''}>↑</button>
+            <button onclick="movePhaseDown(${idx})" class="p-1 bg-white hover:bg-slate-200 border rounded text-slate-700 font-bold" title="下へ移動" ${idx === phases.length - 1 ? 'disabled style="opacity:0.3"' : ''}>↓</button>
+          </div>
+          <input type="text" value="${p.name}" class="font-semibold p-1 border rounded flex-1 min-w-[120px]" onchange="updatePhaseName(${idx}, this.value)">
+          <div class="flex items-center gap-1">
+            <input type="number" min="1" max="30" value="${p.startYear}" class="w-12 p-1 border rounded text-center" onchange="updatePhaseYears(${idx}, 'startYear', this.value)">
+            <span>〜</span>
+            <input type="number" min="1" max="30" value="${p.endYear}" class="w-12 p-1 border rounded text-center" onchange="updatePhaseYears(${idx}, 'endYear', this.value)">
+            <span class="text-slate-500">年</span>
+          </div>
+          <button onclick="removePhase(${idx})" class="text-rose-500 font-bold px-1.5 py-0.5 hover:bg-rose-50 rounded">削除</button>
+        `;
+        container.appendChild(div);
+      });
+      renderPhaseDetailEditors();
+    }
+
+    function movePhaseUp(idx) {
+      if (idx > 0) {
+        const temp = phases[idx];
+        phases[idx] = phases[idx - 1];
+        phases[idx - 1] = temp;
+        renderPhaseList();
+        calculate();
+      }
+    }
+
+    function movePhaseDown(idx) {
+      if (idx < phases.length - 1) {
+        const temp = phases[idx];
+        phases[idx] = phases[idx + 1];
+        phases[idx + 1] = temp;
+        renderPhaseList();
+        calculate();
+      }
+    }
+
+    function renderPhaseDetailEditors() {
+      const container = document.getElementById('phaseDetailEditors');
+      container.innerHTML = '';
+      phases.forEach((p, pIdx) => {
+        const div = document.createElement('div');
+        div.className = "bg-slate-50 p-3.5 rounded-lg border space-y-2 text-xs";
+        let itemsHtml = '';
+        if (p.items) {
+          p.items.forEach((item, iIdx) => {
+            itemsHtml += `
+              <div class="flex gap-1.5 items-center">
+                <input type="text" value="${item.name || ''}" class="flex-1 p-1 border rounded" onchange="updateItem(${pIdx}, ${iIdx}, 'name', this.value)">
+                <input type="number" value="${Number(item.amount) || 0}" class="w-24 p-1 border rounded text-right" onchange="updateItem(${pIdx}, ${iIdx}, 'amount', this.value)">
+                <select class="p-1 border rounded text-[11px]" onchange="updateItem(${pIdx}, ${iIdx}, 'type', this.value)">
+                  <option value="monthly" ${item.type==='monthly'?'selected':''}>月</option>
+                  <option value="yearly" ${item.type==='yearly'?'selected':''}>年</option>
+                </select>
+                <button onclick="removeItem(${pIdx}, ${iIdx})" class="text-rose-500 font-bold px-1">×</button>
+              </div>
+            `;
+          });
+        }
+        div.innerHTML = `
+          <div class="flex justify-between items-center border-b pb-1">
+            <h4 class="font-bold text-slate-800">${p.name} <span class="text-slate-500 font-normal">(${p.startYear}〜${p.endYear}年)</span></h4>
+            <button onclick="addItem(${pIdx})" class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded font-semibold">+ 項目</button>
+          </div>
+          <div class="space-y-1.5 mt-2">${itemsHtml}</div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function addPhase() {
+      const calcYears = Number(document.getElementById('calcYears').value) || 8;
+      phases.push({ name: "新規フェーズ", startYear: Math.min(calcYears, 7), endYear: calcYears, items: [{ name: "基本生活費", amount: 150000, type: "monthly" }] });
+      renderPhaseList();
+      calculate();
+    }
+    function removePhase(idx) { phases.splice(idx, 1); renderPhaseList(); calculate(); }
+    function updatePhaseName(idx, val) { phases[idx].name = val; renderPhaseDetailEditors(); calculate(); }
+    function updatePhaseYears(idx, field, val) { phases[idx][field] = Number(val) || 1; calculate(); }
+    function addItem(pIdx) {
+      if(!phases[pIdx].items) phases[pIdx].items = [];
+      phases[pIdx].items.push({ name: "新規支出", amount: 10000, type: "monthly" });
+      renderPhaseDetailEditors();
+      calculate();
+    }
+    function removeItem(pIdx, iIdx) { phases[pIdx].items.splice(iIdx, 1); renderPhaseDetailEditors(); calculate(); }
+    function updateItem(pIdx, iIdx, field, val) {
+      if(field === 'amount') phases[pIdx].items[iIdx][field] = Number(val) || 0;
+      else phases[pIdx].items[iIdx][field] = val;
+      calculate();
+    }
+
+    function renderEventList() {
+      const container = document.getElementById('eventListContainer');
+      container.innerHTML = '';
+      customEvents.forEach((ev, idx) => {
+        const div = document.createElement('div');
+        div.className = "bg-slate-50 p-2 rounded border text-xs flex items-center gap-2";
+        div.innerHTML = `
+          <input type="number" min="1" max="30" value="${ev.year}" class="w-12 p-1 border rounded text-center" onchange="updateEvent(${idx}, 'year', this.value)">
+          <span class="text-slate-500">年</span>
+          <input type="text" value="${ev.name}" class="flex-1 p-1 border rounded" onchange="updateEvent(${idx}, 'name', this.value)">
+          <input type="number" value="${ev.amount}" class="w-24 p-1 border rounded text-right" onchange="updateEvent(${idx}, 'amount', this.value)">
+          <button onclick="removeEventRow(${idx})" class="text-rose-500 font-bold px-1">×</button>
+        `;
+        container.appendChild(div);
+      });
+    }
+    function addEventRow() { customEvents.push({ year: 3, name: "臨時支出", amount: 200000 }); renderEventList(); calculate(); }
+    function updateEvent(idx, field, val) {
+      if(field === 'year' || field === 'amount') customEvents[idx][field] = Number(val) || 0;
+      else customEvents[idx][field] = val;
+      calculate();
+    }
+    function removeEventRow(idx) { customEvents.splice(idx, 1); renderEventList(); calculate(); }
+
+    let assetChartInstance = null;
+    let cfChartInstance = null;
+
+    function calculate() {
+      const calcYears = Math.min(30, Math.max(1, Number(document.getElementById('calcYears').value) || 8));
+      const bearRate = Number(document.getElementById('bearRate').value) / 100 || 0;
+      const bonusMonths = Number(document.getElementById('bonusMonths').value) || 6.0;
+      const otHours = Number(document.getElementById('overtimeHours').value) || 10;
+      const nisaInit = Number(document.getElementById('nisaInit').value) || 50000;
+      const nisaLater = Number(document.getElementById('nisaLater').value) || 100000;
+
+      let cash = 0;
+      let nisaBalance = 0;
+      let minCash = Infinity;
+      let minCashYear = 1;
+      let totalEarned = 0;
+      let totalSpent = 0;
+
+      const labels = [];
+      const totalData = [];
+      const nisaData = [];
+      const cashData = [];
+      const incomeData = [];
+      const expenseData = [];
+
+      const incomeTable = document.getElementById('incomeTableBody');
+      const expenseTable = document.getElementById('expenseTableBody');
+      const assetTable = document.getElementById('assetTableBody');
+      incomeTable.innerHTML = '';
+      expenseTable.innerHTML = '';
+      assetTable.innerHTML = '';
+
+      for (let i = 0; i < calcYears; i++) {
+        const item = salaryMaster[i] || { year: i+1, age: 24+i, grade: "主査", baseMonthly: 580000, hasOt: false };
+        const year = item.year;
+        const age = item.age;
+        labels.push(`${year}年目(${age}歳)`);
+
+        const baseM = item.baseMonthly * Math.pow(1 + bearRate, i);
+        const otRate = (baseM / 160) * 1.25;
+        const otM = item.hasOt ? otRate * otHours : 0;
+        let bonusM = baseM * bonusMonths;
+        if (i === 0) bonusM = baseM * 3.0;
+
+        const grossAnnual = (baseM * 12) + (otM * 12) + bonusM;
+        const takeHomeAnnual = grossAnnual <= 6000000 ? grossAnnual * 0.78 : (grossAnnual <= 8000000 ? grossAnnual * 0.75 : grossAnnual * 0.73);
+        totalEarned += takeHomeAnnual;
+
+        let matchedPhaseName = "未設定";
+        let annualLiving = 0;
+        for (let p of phases) {
+          if (year >= p.startYear && year <= p.endYear) {
+            matchedPhaseName = p.name;
+            if (p.items) {
+              p.items.forEach(it => {
+                const amt = Number(it.amount) || 0;
+                if (it.type === 'monthly') annualLiving += amt * 12;
+                else annualLiving += amt;
+              });
+            }
+            break;
+          }
+        }
+
+        let specialTotal = 0;
+        let specialDescList = [];
+        customEvents.forEach(ev => {
+          if (ev.year === year) {
+            const amt = Number(ev.amount) || 0;
+            specialTotal += amt;
+            specialDescList.push(`${ev.name}:¥${(amt/10000).toLocaleString()}万`);
+          }
+        });
+
+        const nisaMonth = year <= 2 ? nisaInit : nisaLater;
+        const nisaYear = nisaMonth * 12;
+        nisaBalance = (nisaBalance + nisaYear) * 1.05;
+
+        const totalExpense = annualLiving + nisaYear + specialTotal;
+        totalSpent += totalExpense;
+
+        const netFlow = takeHomeAnnual - totalExpense;
+        cash += netFlow;
+        const totalAsset = cash + nisaBalance;
+
+        if (cash < minCash) {
+          minCash = cash;
+          minCashYear = year;
+        }
+
+        totalData.push(Math.round(totalAsset));
+        nisaData.push(Math.round(nisaBalance));
+        cashData.push(Math.round(cash));
+        incomeData.push(Math.round(takeHomeAnnual));
+        expenseData.push(Math.round(totalExpense));
+
+        const r1 = document.createElement('tr');
+        r1.innerHTML = `
+          <td class="p-2 font-medium">${year}年目(${age}歳)</td>
+          <td class="p-2">${item.grade}</td>
+          <td class="p-2">¥${Math.round(baseM).toLocaleString()}</td>
+          <td class="p-2">${item.hasOt ? '¥' + Math.round(otM).toLocaleString() : '<span class="text-slate-400">対象外(0)</span>'}</td>
+          <td class="p-2">¥${Math.round(bonusM).toLocaleString()}</td>
+          <td class="p-2 font-semibold">¥${Math.round(grossAnnual).toLocaleString()}</td>
+          <td class="p-2 font-bold text-blue-800">¥${Math.round(takeHomeAnnual).toLocaleString()}</td>
+        `;
+        incomeTable.appendChild(r1);
+
+        const r2 = document.createElement('tr');
+        r2.innerHTML = `
+          <td class="p-2 font-medium">${year}年目(${age}歳)</td>
+          <td class="p-2 text-emerald-700 font-medium">${matchedPhaseName}</td>
+          <td class="p-2">¥${Math.round(annualLiving).toLocaleString()}</td>
+          <td class="p-2">¥${Math.round(nisaYear).toLocaleString()}</td>
+          <td class="p-2 text-rose-600">${specialDescList.length > 0 ? specialDescList.join(', ') : 'なし'}</td>
+          <td class="p-2 font-bold text-emerald-900">¥${Math.round(totalExpense).toLocaleString()}</td>
+        `;
+        expenseTable.appendChild(r2);
+
+        const r3 = document.createElement('tr');
+        r3.innerHTML = `
+          <td class="p-2 font-medium">${year}年目(${age}歳)</td>
+          <td class="p-2 font-semibold ${netFlow >= 0 ? 'text-blue-600' : 'text-rose-600'}">${netFlow >= 0 ? '+' : ''}¥${Math.round(netFlow).toLocaleString()}</td>
+          <td class="p-2 font-bold text-emerald-700">¥${Math.round(cash).toLocaleString()}</td>
+          <td class="p-2 font-bold text-indigo-700">¥${Math.round(nisaBalance).toLocaleString()}</td>
+          <td class="p-2 font-bold text-blue-800">¥${Math.round(totalAsset).toLocaleString()}</td>
+        `;
+        assetTable.appendChild(r3);
+      }
+
+      const finalTotalAsset = totalData[totalData.length - 1];
+      const finalNisa = nisaData[nisaData.length - 1];
+      document.getElementById('kpiFinalAsset').innerText = '¥' + (finalTotalAsset / 10000).toLocaleString() + '万円';
+      document.getElementById('kpiFinalNisa').innerText = '¥' + (finalNisa / 10000).toLocaleString() + '万円';
+      document.getElementById('kpiMinCash').innerText = '¥' + (minCash / 10000).toLocaleString() + '万円';
+      document.getElementById('kpiMinCashYear').innerText = `到達: ${minCashYear}年目時点`;
+      document.getElementById('kpiFinalYearText').innerText = `計算終了(${calcYears}年目)時点`;
+      document.getElementById('kpiTotalFlow').innerText = `手取: ¥${Math.round(totalEarned/10000).toLocaleString()}万 / 支出: ¥${Math.round(totalSpent/10000).toLocaleString()}万`;
+      
+      const savingsRate = Math.round(((totalEarned - (totalSpent - (nisaData[nisaData.length-1] ? nisaInit*12 : 0))) / totalEarned) * 100);
+      document.getElementById('kpiSavingsRate').innerText = `平均年間貯蓄余力: ${Math.max(0, savingsRate)}%`;
+
+      document.getElementById('printDate').innerText = new Date().toLocaleDateString('ja-JP');
+      document.getElementById('printConditionSummary').innerHTML = `
+        <div><strong>計算年数:</strong> ${calcYears}年間</div>
+        <div><strong>初任給:</strong> ¥${Number(document.getElementById('startingSalary').value).toLocaleString()}</div>
+        <div><strong>ベア率:</strong> ${document.getElementById('bearRate').value}%/年</div>
+        <div><strong>賞与月数:</strong> ${bonusMonths}ヶ月</div>
+        <div><strong>平常残業:</strong> ${otHours}h/月</div>
+        <div><strong>NISA積立:</strong> 初期5万 / 3年目~10万</div>
+        <div><strong>NISA想定利回り:</strong> 5.0%</div>
+      `;
+
+      let phasesSummaryHtml = '';
+      phases.forEach((p, idx) => {
+        let itemsStr = p.items ? p.items.map(it => `${it.name}: ¥${(it.amount/10000).toLocaleString()}万(${it.type==='monthly'?'月':'年'})`).join(', ') : '';
+        phasesSummaryHtml += `<div><strong>${idx + 1}. ${p.name} (${p.startYear}〜${p.endYear}年目):</strong> ${itemsStr}</div>`;
+      });
+      document.getElementById('printPhasesSummary').innerHTML = phasesSummaryHtml;
+
+      if (assetChartInstance) assetChartInstance.destroy();
+      assetChartInstance = new Chart(document.getElementById('assetChart').getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            { label: '総純資産', data: totalData, borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.08)', fill: true, tension: 0.2 },
+            { label: '新NISA残高', data: nisaData, borderColor: '#4f46e5', borderDash: [4, 4], fill: false },
+            { label: '手元普通預金', data: cashData, borderColor: '#059669', fill: false }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { ticks: { callback: v => '¥' + (v / 10000).toLocaleString() + '万' } } } }
+      });
+
+      if (cfChartInstance) cfChartInstance.destroy();
+      cfChartInstance = new Chart(document.getElementById('cashflowChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            { label: '手取り収入', data: incomeData, backgroundColor: '#3b82f6' },
+            { label: '年間総支出', data: expenseData, backgroundColor: '#f43f5e' }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { ticks: { callback: v => '¥' + (v / 10000).toLocaleString() + '万' } } } }
+      });
+
+      saveToStorage();
+    }
+
+    function saveToStorage() {
+      const data = {
+        calcYears: document.getElementById('calcYears').value,
+        startingSalary: document.getElementById('startingSalary').value,
+        bearRate: document.getElementById('bearRate').value,
+        bonusMonths: document.getElementById('bonusMonths').value,
+        overtimeHours: document.getElementById('overtimeHours').value,
+        nisaInit: document.getElementById('nisaInit').value,
+        nisaLater: document.getElementById('nisaLater').value,
+        salaryMaster: salaryMaster,
+        phases: phases,
+        customEvents: customEvents
+      };
+      localStorage.setItem('nssmc_sim_data', JSON.stringify(data));
+    }
+
+    function loadFromStorage() {
+      const saved = localStorage.getItem('nssmc_sim_data');
+      if (saved) {
+        try {
+          const data = JSON.parse(saved);
+          if (data.calcYears) document.getElementById('calcYears').value = data.calcYears;
+          if (data.startingSalary) document.getElementById('startingSalary').value = data.startingSalary;
+          if (data.bearRate) document.getElementById('bearRate').value = data.bearRate;
+          if (data.bonusMonths) document.getElementById('bonusMonths').value = data.bonusMonths;
+          if (data.overtimeHours) document.getElementById('overtimeHours').value = data.overtimeHours;
+          if (data.nisaInit) document.getElementById('nisaInit').value = data.nisaInit;
+          if (data.nisaLater) document.getElementById('nisaLater').value = data.nisaLater;
+          if (data.salaryMaster) salaryMaster = data.salaryMaster;
+          if (data.phases) phases = data.phases;
+          if (data.customEvents) customEvents = data.customEvents;
+        } catch(e) {}
+      }
+    }
+
+    window.onload = function() {
+      loadFromStorage();
+      renderSalaryEditor();
+      renderPhaseList();
+      renderEventList();
+      calculate();
+    };
+  </script>
+</body>
+</html>
