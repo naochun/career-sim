@@ -119,7 +119,7 @@
       <div class="card bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
         <span class="text-[11px] text-slate-500 font-medium">生涯手取り vs 総支出</span>
         <div id="kpiTotalFlow" class="text-xs font-bold text-slate-700 mt-1">¥0 / ¥0</div>
-        <span id="kpiSavingsRate" class="text-[10px] text-blue-500 font-semibold">平均貯蓄余力: 0%</span>
+        <span id="kpiSavingsRate" class="text-[10px] text-blue-600 font-semibold">平均貯蓄余力: 0%</span>
       </div>
     </div>
 
@@ -140,7 +140,7 @@
         <div class="chart-container"><canvas id="assetChart"></canvas></div>
       </div>
       <div>
-        <h3 class="font-bold text-xs md:text-sm mb-2 text-slate-800">■ 年間収支（手取り収入 vs 年間総支出）</h3>
+        <h3 class="font-bold text-xs md:text-sm mb-2 text-slate-800">■ 年間収支（手取り収入 vs 年間消費支出）</h3>
         <div class="chart-container"><canvas id="cashflowChart"></canvas></div>
       </div>
       <div>
@@ -172,7 +172,7 @@
             </label>
           </div>
         </div>
-        <div class="grid grid-cols-2 md:grid-cols-6 gap-3 text-xs">
+        <div class="grid grid-cols-2 md:grid-cols-7 gap-3 text-xs">
           <div>
             <label class="font-semibold block text-slate-700">計算年数 (年)</label>
             <input id="calcYears" type="number" min="1" max="40" value="10" class="w-full mt-1 p-2 border rounded font-semibold text-blue-700" onchange="onCalcYearsChange()">
@@ -190,6 +190,10 @@
             <input id="bonusMonths" type="number" step="0.5" value="6.0" class="w-full mt-1 p-2 border rounded" onchange="calculate()">
           </div>
           <div>
+            <label class="font-semibold block text-slate-700">NISA利回り (%/年)</label>
+            <input id="nisaGlobalRate" type="number" step="0.5" value="5.0" class="w-full mt-1 p-2 border rounded text-indigo-700 font-semibold" onchange="calculate()">
+          </div>
+          <div>
             <label class="font-semibold block text-slate-700">生活防衛資金 (万円)</label>
             <input id="safetyCash" type="number" step="10" value="100" class="w-full mt-1 p-2 border rounded text-emerald-700 font-semibold" onchange="calculate()">
           </div>
@@ -203,9 +207,12 @@
       <!-- 2. NISA・運用ルール -->
       <div class="bg-white p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
         <div class="flex justify-between items-center border-b pb-2">
-          <h2 class="font-bold text-xs md:text-sm text-indigo-700 flex items-center gap-1.5">
-            <span>📊</span> 2. 資産運用・NISA積立ルール（期間別設定）
-          </h2>
+          <div>
+            <h2 class="font-bold text-xs md:text-sm text-indigo-700 flex items-center gap-1.5">
+              <span>📊</span> 2. 資産運用・NISA積立ルール（期間別設定）
+            </h2>
+            <p class="text-[11px] text-slate-500">※想定利回りは設定1の「NISA利回り (%/年)」で一括管理されます</p>
+          </div>
           <button onclick="addNisaBlock()" class="bg-indigo-600 text-white text-[11px] px-2.5 py-1 rounded hover:bg-indigo-700 font-semibold">+ 期間ブロック追加</button>
         </div>
         <div id="nisaBlocksContainer" class="space-y-2 text-xs"></div>
@@ -238,7 +245,7 @@
         </div>
       </div>
 
-      <!-- 4. ライフステージ（フェーズ）＆ 特別支出 -->
+      <!-- 4. ライフステージ（フェーズ）＆ 特別支出・ローン -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <div class="bg-white p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
           <div class="flex justify-between items-center border-b pb-2">
@@ -252,16 +259,19 @@
 
         <div class="bg-white p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
           <div class="flex justify-between items-center border-b pb-2">
-            <h2 class="font-bold text-xs md:text-sm text-purple-700 flex items-center gap-1.5">
-              <span>💍</span> 5. 特別イベント支出
-            </h2>
+            <div>
+              <h2 class="font-bold text-xs md:text-sm text-purple-700 flex items-center gap-1.5">
+                <span>💍</span> 5. 特別支出・ローン設定（単発 / 期間指定）
+              </h2>
+              <p class="text-[11px] text-slate-500">車のローンや奨学金などの期間分割払い（利息考慮なし）も登録可能</p>
+            </div>
             <button onclick="addEventRow()" class="bg-purple-600 text-white text-[11px] px-2 py-1 rounded font-semibold">+ 追加</button>
           </div>
           <div id="eventListContainer" class="space-y-2 max-h-60 overflow-y-auto pr-1"></div>
         </div>
       </div>
 
-      <!-- 5. フェーズ詳細支出 -->
+      <!-- 5. フェーズ詳細支出（幅縮小時のはみ出し完全対応） -->
       <div class="bg-white p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
         <h2 class="font-bold text-xs md:text-sm text-emerald-800 border-b pb-2">
           <span>📝</span> 6. フェーズ別・詳細支出項目
@@ -293,16 +303,16 @@
 
     <!-- テーブル2: 支出詳細 -->
     <div class="card bg-white p-4 rounded-xl border border-slate-200 overflow-x-auto avoid-break">
-      <h3 class="font-bold text-xs md:text-sm mb-2 text-emerald-700">■ 支出詳細分類表</h3>
+      <h3 class="font-bold text-xs md:text-sm mb-2 text-emerald-700">■ 支出詳細分類表（消費支出）</h3>
       <table class="w-full text-left text-xs border-collapse">
         <thead>
           <tr class="bg-emerald-50 border-b text-emerald-900">
             <th class="p-1.5">年次(年齢)</th>
             <th class="p-1.5">適用フェーズ</th>
             <th class="p-1.5">年間生活費</th>
-            <th class="p-1.5">NISA積立</th>
-            <th class="p-1.5">特別支出</th>
-            <th class="p-1.5 font-bold text-emerald-900">年間総支出</th>
+            <th class="p-1.5">特別支出・ローン</th>
+            <th class="p-1.5 font-bold text-emerald-900">年間総支出(消費)</th>
+            <th class="p-1.5 font-bold text-indigo-700">参考: NISA積立</th>
           </tr>
         </thead>
         <tbody id="expenseTableBody" class="divide-y divide-slate-200"></tbody>
@@ -316,7 +326,8 @@
         <thead>
           <tr class="bg-purple-50 border-b text-purple-900">
             <th class="p-1.5">年次(年齢)</th>
-            <th class="p-1.5">収支純増減</th>
+            <th class="p-1.5 font-semibold text-blue-700">純貯蓄余力 (手取-支出)</th>
+            <th class="p-1.5 font-semibold text-emerald-600">預金増減 (余力-NISA)</th>
             <th class="p-1.5 font-bold text-emerald-700">普通預金残高</th>
             <th class="p-1.5 font-bold text-indigo-700">NISA残高</th>
             <th class="p-1.5 font-bold text-blue-800">総純資産</th>
@@ -374,8 +385,8 @@
     let allScenariosMap = {};
 
     const defaultNisaBlocks = [
-      { startYear: 1, endYear: 2, monthly: 50000, rate: 5.0 },
-      { startYear: 3, endYear: 10, monthly: 100000, rate: 5.0 }
+      { startYear: 1, endYear: 2, monthly: 50000 },
+      { startYear: 3, endYear: 10, monthly: 100000 }
     ];
 
     const defaultSalaryMaster = [
@@ -428,8 +439,7 @@
           { name: "食費・日用品", amount: 80000, type: "monthly" },
           { name: "通信・サブスク", amount: 15000, type: "monthly" },
           { name: "車維持費", amount: 450000, type: "yearly" },
-          { name: "レジャー(旅行/ゴルフ/飲)", amount: 100000, type: "monthly" },
-          { name: "車ローン", amount: 50000, type: "monthly" }
+          { name: "レジャー(旅行/ゴルフ/飲)", amount: 100000, type: "monthly" }
         ]
       },
       {
@@ -442,18 +452,18 @@
           { name: "食費・日用品", amount: 100000, type: "monthly" },
           { name: "車維持費", amount: 450000, type: "yearly" },
           { name: "レジャー(旅行/ゴルフ/飲)", amount: 100000, type: "monthly" },
-          { name: "通信・サブスク", amount: 15000, type: "monthly" },
-          { name: "車ローン", amount: 50000, type: "monthly" }
+          { name: "通信・サブスク", amount: 15000, type: "monthly" }
         ]
       }
     ];
 
     const defaultCustomEvents = [
-      { year: 1, name: "親への返済", amount: 460000 },
-      { year: 2, name: "親返済完済", amount: 540000 },
-      { year: 4, name: "寮退去・引越敷礼", amount: 300000 },
-      { year: 5, name: "車頭金", amount: 1000000 },
-      { year: 7, name: "結婚費用自腹", amount: 2000000 }
+      { startYear: 1, endYear: 1, name: "親への返済", amount: 460000, type: "yearly" },
+      { startYear: 2, endYear: 2, name: "親返済完済", amount: 540000, type: "yearly" },
+      { startYear: 4, endYear: 4, name: "寮退去・引越敷礼", amount: 300000, type: "yearly" },
+      { startYear: 5, endYear: 5, name: "車頭金", amount: 1000000, type: "yearly" },
+      { startYear: 5, endYear: 9, name: "車ローン(5年)", amount: 50000, type: "monthly" },
+      { startYear: 7, endYear: 7, name: "結婚費用自腹", amount: 2000000, type: "yearly" }
     ];
 
     let nisaBlocks = JSON.parse(JSON.stringify(defaultNisaBlocks));
@@ -523,6 +533,7 @@
         toggleAutoBear: document.getElementById('toggleAutoBear').checked,
         toggleAutoSlide: document.getElementById('toggleAutoSlide').checked,
         bonusMonths: document.getElementById('bonusMonths').value,
+        nisaGlobalRate: document.getElementById('nisaGlobalRate')?.value || 5.0,
         safetyCash: document.getElementById('safetyCash').value,
         inflationRate: document.getElementById('inflationRate').value,
         nisaBlocks: nisaBlocks,
@@ -591,13 +602,25 @@
         if (d.toggleAutoBear !== undefined) document.getElementById('toggleAutoBear').checked = d.toggleAutoBear;
         if (d.toggleAutoSlide !== undefined) document.getElementById('toggleAutoSlide').checked = d.toggleAutoSlide;
         if (d.bonusMonths) document.getElementById('bonusMonths').value = d.bonusMonths;
+        if (d.nisaGlobalRate) document.getElementById('nisaGlobalRate').value = d.nisaGlobalRate;
         if (d.safetyCash) document.getElementById('safetyCash').value = d.safetyCash;
         if (d.inflationRate) document.getElementById('inflationRate').value = d.inflationRate;
 
         nisaBlocks = d.nisaBlocks ? JSON.parse(JSON.stringify(d.nisaBlocks)) : JSON.parse(JSON.stringify(defaultNisaBlocks));
         salaryMaster = d.salaryMaster ? JSON.parse(JSON.stringify(d.salaryMaster)) : JSON.parse(JSON.stringify(defaultSalaryMaster));
         phases = d.phases ? JSON.parse(JSON.stringify(d.phases)) : JSON.parse(JSON.stringify(defaultPhases));
-        customEvents = d.customEvents ? JSON.parse(JSON.stringify(d.customEvents)) : JSON.parse(JSON.stringify(defaultCustomEvents));
+        
+        if (d.customEvents) {
+          customEvents = d.customEvents.map(ev => ({
+            startYear: ev.startYear || ev.year || 1,
+            endYear: ev.endYear || ev.year || 1,
+            name: ev.name || "特別支出",
+            amount: Number(ev.amount) || 0,
+            type: ev.type || "yearly"
+          }));
+        } else {
+          customEvents = JSON.parse(JSON.stringify(defaultCustomEvents));
+        }
       }
       renderAllEditors();
       calculate();
@@ -663,11 +686,9 @@
           <input type="number" min="1" max="40" value="${b.startYear}" class="w-12 p-1 border rounded text-center" onchange="nisaBlocks[${idx}].startYear=Number(this.value);calculate();">
           <span>〜</span>
           <input type="number" min="1" max="40" value="${b.endYear}" class="w-12 p-1 border rounded text-center" onchange="nisaBlocks[${idx}].endYear=Number(this.value);calculate();">
-          <span>年目 | 積立: ¥</span>
+          <span>年目 | 積立額: ¥</span>
           <input type="number" step="5000" value="${b.monthly}" class="w-24 p-1 border rounded text-right font-semibold" onchange="nisaBlocks[${idx}].monthly=Number(this.value);calculate();">
-          <span>/月 | 年利:</span>
-          <input type="number" step="0.5" value="${b.rate}" class="w-14 p-1 border rounded text-center" onchange="nisaBlocks[${idx}].rate=Number(this.value);calculate();">
-          <span>%</span>
+          <span>/月</span>
           <button onclick="nisaBlocks.splice(${idx},1);renderNisaBlocks();calculate();" class="text-rose-500 font-bold px-1 ml-auto">×</button>
         `;
         container.appendChild(div);
@@ -675,7 +696,7 @@
     }
 
     function addNisaBlock() {
-      nisaBlocks.push({ startYear: 1, endYear: 10, monthly: 50000, rate: 5.0 });
+      nisaBlocks.push({ startYear: 1, endYear: 10, monthly: 50000 });
       renderNisaBlocks();
       calculate();
     }
@@ -735,25 +756,28 @@
       calculate();
     }
 
+    /**
+     * フェーズ別詳細支出エディタ（画面幅縮小時のはみ出し・改行崩れ防止対応）
+     */
     function renderPhaseDetailEditors() {
       const container = document.getElementById('phaseDetailEditors');
       if (!container) return;
       container.innerHTML = '';
       phases.forEach((p, pIdx) => {
         const div = document.createElement('div');
-        div.className = "bg-slate-50 p-2.5 rounded-lg border space-y-1.5 text-xs";
+        div.className = "bg-slate-50 p-2.5 rounded-lg border space-y-1.5 text-xs overflow-hidden";
         let itemsHtml = '';
         if (p.items) {
           p.items.forEach((item, iIdx) => {
             itemsHtml += `
-              <div class="flex gap-1 items-center">
-                <input type="text" value="${item.name}" class="flex-1 p-1 border rounded" onchange="phases[${pIdx}].items[${iIdx}].name=this.value;calculate();">
-                <input type="number" value="${item.amount}" class="w-20 p-1 border rounded text-right" onchange="phases[${pIdx}].items[${iIdx}].amount=Number(this.value);calculate();">
-                <select class="p-1 border rounded text-[10px]" onchange="phases[${pIdx}].items[${iIdx}].type=this.value;calculate();">
+              <div class="flex items-center gap-1 min-w-0">
+                <input type="text" value="${item.name}" class="min-w-0 flex-1 p-1 border rounded text-xs" onchange="phases[${pIdx}].items[${iIdx}].name=this.value;calculate();">
+                <input type="number" value="${item.amount}" class="w-16 shrink-0 p-1 border rounded text-right text-xs" onchange="phases[${pIdx}].items[${iIdx}].amount=Number(this.value);calculate();">
+                <select class="shrink-0 p-1 border rounded text-[10px] bg-white w-11" onchange="phases[${pIdx}].items[${iIdx}].type=this.value;calculate();">
                   <option value="monthly" ${item.type==='monthly'?'selected':''}>月</option>
                   <option value="yearly" ${item.type==='yearly'?'selected':''}>年</option>
                 </select>
-                <button onclick="phases[${pIdx}].items.splice(${iIdx},1);renderPhaseDetailEditors();calculate();" class="text-rose-500 font-bold px-1">×</button>
+                <button onclick="phases[${pIdx}].items.splice(${iIdx},1);renderPhaseDetailEditors();calculate();" class="shrink-0 text-rose-500 font-bold px-1">×</button>
               </div>
             `;
           });
@@ -761,7 +785,7 @@
         div.innerHTML = `
           <div class="flex justify-between items-center border-b pb-1 font-bold">
             <span class="truncate max-w-[140px]">${p.name}</span>
-            <button onclick="phases[${pIdx}].items.push({name:'新規支出',amount:10000,type:'monthly'});renderPhaseDetailEditors();calculate();" class="text-[10px] bg-blue-600 text-white px-1.5 py-0.5 rounded font-semibold">+ 項目</button>
+            <button onclick="phases[${pIdx}].items.push({name:'新規支出',amount:10000,type:'monthly'});renderPhaseDetailEditors();calculate();" class="text-[10px] bg-blue-600 text-white px-1.5 py-0.5 rounded font-semibold shrink-0">+ 項目</button>
           </div>
           <div class="space-y-1 mt-1">${itemsHtml}</div>
         `;
@@ -775,12 +799,18 @@
       container.innerHTML = '';
       customEvents.forEach((ev, idx) => {
         const div = document.createElement('div');
-        div.className = "bg-slate-50 p-1.5 rounded border text-xs flex items-center gap-1.5";
+        div.className = "bg-slate-50 p-1.5 rounded border text-xs flex flex-wrap items-center gap-1.5";
         div.innerHTML = `
-          <input type="number" value="${ev.year}" class="w-10 p-1 border rounded text-center" onchange="customEvents[${idx}].year=Number(this.value);calculate();">
-          <span>年</span>
-          <input type="text" value="${ev.name}" class="flex-1 p-1 border rounded" onchange="customEvents[${idx}].name=this.value;calculate();">
-          <input type="number" value="${ev.amount}" class="w-24 p-1 border rounded text-right" onchange="customEvents[${idx}].amount=Number(this.value);calculate();">
+          <input type="number" value="${ev.startYear}" class="w-10 p-1 border rounded text-center" onchange="customEvents[${idx}].startYear=Number(this.value);calculate();">
+          <span>〜</span>
+          <input type="number" value="${ev.endYear}" class="w-10 p-1 border rounded text-center" onchange="customEvents[${idx}].endYear=Number(this.value);calculate();">
+          <span>年目:</span>
+          <input type="text" value="${ev.name}" class="flex-1 min-w-[90px] p-1 border rounded" onchange="customEvents[${idx}].name=this.value;calculate();">
+          <input type="number" value="${ev.amount}" class="w-20 p-1 border rounded text-right font-semibold" onchange="customEvents[${idx}].amount=Number(this.value);calculate();">
+          <select class="p-1 border rounded text-[10px]" onchange="customEvents[${idx}].type=this.value;calculate();">
+            <option value="yearly" ${ev.type==='yearly'?'selected':''}>年額(単発)</option>
+            <option value="monthly" ${ev.type==='monthly'?'selected':''}>月額</option>
+          </select>
           <button onclick="customEvents.splice(${idx},1);renderEventList();calculate();" class="text-rose-500 font-bold px-1">×</button>
         `;
         container.appendChild(div);
@@ -788,16 +818,13 @@
     }
 
     function addEventRow() {
-      customEvents.push({ year: 3, name: "臨時支出", amount: 200000 });
+      customEvents.push({ startYear: 5, endYear: 9, name: "新規ローン", amount: 50000, type: "monthly" });
       renderEventList();
       calculate();
     }
 
     let assetChart = null, cfChart = null, ratioChart = null, pieChart = null;
 
-    /**
-     * 日本の給与所得控除・社会保険料・累進所得税・住民税（1年目非課税）を考慮した手取り計算
-     */
     function calculateAccurateNetIncome(gross, year) {
       if (gross <= 0) return 0;
       const siRate = gross > 10000000 ? 0.138 : 0.148;
@@ -820,7 +847,6 @@
       else incTax = taxableInc * 0.33 - 1536000;
       incTax = Math.round(Math.max(0, incTax) * 1.021);
 
-      // 1年目は住民税非課税
       let resTax = 0;
       if (year > 1) {
         const resTaxable = Math.max(0, gross - empDeduction - socialInsurance - 430000);
@@ -830,12 +856,15 @@
       return Math.round(gross - socialInsurance - incTax - resTax);
     }
 
-    function runSimCalculation(customSalary, customPhases, customEventsList, customNisa, calcY, bonusM, bRate, isBear, inflRate) {
+    function runSimCalculation(customSalary, customPhases, customEventsList, customNisa, calcY, bonusM, bRate, isBear, inflRate, globalNisaRate) {
       let cash = 0, nisa = 0;
       const totalArr = [], cashArr = [], nisaArr = [], incArr = [], expArr = [];
-      let totEarned = 0, totSpent = 0, minC = Infinity, minCYear = 1;
-      const rLiving = [], rNisa = [], rSpecial = [], rSavings = []; // ★rSavings として統一定義
-      let sLiv = 0, sNis = 0, sSpe = 0;
+      const nisaFlowArr = [], netCashflowArr = [], netSavingsArr = [];
+      let totEarned = 0, totConsumption = 0, minC = Infinity, minCYear = 1;
+      const rLiving = [], rSpecial = [], rNisa = [], rPureSavings = [];
+      let sLiv = 0, sSpe = 0, sNis = 0;
+
+      const nisaRate = (Number(globalNisaRate) || 5.0) / 100;
 
       for (let i = 0; i < calcY; i++) {
         const item = (customSalary && customSalary[i]) ? customSalary[i] : { year: i+1, age: 24+i, grade: "主査", baseMonthly: 590000, otHours: 0, hasOt: false };
@@ -870,16 +899,22 @@
         let specialTotal = 0;
         if (customEventsList) {
           customEventsList.forEach(ev => {
-            if (ev.year === item.year) specialTotal += (Number(ev.amount)||0);
+            const sY = ev.startYear || ev.year || 1;
+            const eY = ev.endYear || ev.year || 1;
+            if (item.year >= sY && item.year <= eY) {
+              specialTotal += ev.type === 'monthly' ? (Number(ev.amount)||0) * 12 : (Number(ev.amount)||0);
+            }
           });
         }
 
-        let nisaMonth = 0, nisaRate = 0.05;
+        const consumptionExpense = annualLiving + specialTotal;
+        totConsumption += consumptionExpense;
+
+        let nisaMonth = 0;
         if (customNisa) {
           for (let b of customNisa) {
             if (item.year >= b.startYear && item.year <= b.endYear) {
               nisaMonth = Number(b.monthly) || 0;
-              nisaRate = (Number(b.rate) || 5.0) / 100;
               break;
             }
           }
@@ -887,11 +922,9 @@
         const nisaYear = nisaMonth * 12;
         nisa = (nisa + nisaYear) * (1 + nisaRate);
 
-        const totalExpense = annualLiving + nisaYear + specialTotal;
-        totSpent += totalExpense;
-
-        const netFlow = takeHome - totalExpense;
-        cash += netFlow;
+        const netSavingsMargin = takeHome - consumptionExpense;
+        const netCashChange = netSavingsMargin - nisaYear;
+        cash += netCashChange;
 
         const totAsset = cash + nisa;
         if (cash < minC) {
@@ -900,27 +933,30 @@
         }
 
         sLiv += annualLiving;
-        sNis += nisaYear;
         sSpe += specialTotal;
+        sNis += nisaYear;
 
         totalArr.push(Math.round(totAsset * dFactor));
         nisaArr.push(Math.round(nisa * dFactor));
         cashArr.push(Math.round(cash * dFactor));
         incArr.push(Math.round(takeHome * dFactor));
-        expArr.push(Math.round(totalExpense * dFactor));
+        expArr.push(Math.round(consumptionExpense * dFactor));
+        nisaFlowArr.push(Math.round(nisaYear * dFactor));
+        netCashflowArr.push(Math.round(netSavingsMargin * dFactor));
+        netSavingsArr.push(Math.round(netCashChange * dFactor));
 
         const th = takeHome > 0 ? takeHome : 1;
         rLiving.push(((annualLiving / th) * 100).toFixed(1));
-        rNisa.push(((nisaYear / th) * 100).toFixed(1));
         rSpecial.push(((specialTotal / th) * 100).toFixed(1));
-        rSavings.push((Math.max(0, netFlow / th) * 100).toFixed(1));
+        rNisa.push(((nisaYear / th) * 100).toFixed(1));
+        rPureSavings.push((Math.max(0, netCashChange / th) * 100).toFixed(1));
       }
 
       return {
-        totalArr, nisaArr, cashArr, incArr, expArr,
-        totEarned, totSpent, minC, minCYear,
-        rLiving, rNisa, rSpecial, rSavings,
-        sLiv, sNis, sSpe
+        totalArr, nisaArr, cashArr, incArr, expArr, nisaFlowArr, netCashflowArr, netSavingsArr,
+        totEarned, totConsumption, minC, minCYear,
+        rLiving, rSpecial, rNisa, rPureSavings,
+        sLiv, sSpe, sNis
       };
     }
 
@@ -931,8 +967,12 @@
       const inflation = (Number(document.getElementById('inflationRate')?.value) || 1.0) / 100;
       const bearRate = (Number(document.getElementById('bearRate')?.value) || 0) / 100;
       const isAutoBear = document.getElementById('toggleAutoBear')?.checked || false;
+      const globalNisaRate = document.getElementById('nisaGlobalRate')?.value || 5.0;
 
-      const curRes = runSimCalculation(salaryMaster, phases, customEvents, nisaBlocks, calcYears, bonusMonths, bearRate, isAutoBear, inflation);
+      const curRes = runSimCalculation(
+        salaryMaster, phases, customEvents, nisaBlocks,
+        calcYears, bonusMonths, bearRate, isAutoBear, inflation, globalNisaRate
+      );
 
       const labels = [];
       const incTbody = document.getElementById('incomeTableBody');
@@ -972,44 +1012,51 @@
         let speTotal = 0;
         let speDesc = [];
         customEvents.forEach(ev => {
-          if (ev.year === item.year) {
-            speTotal += Number(ev.amount) || 0;
-            speDesc.push(`${ev.name}:¥${((Number(ev.amount)||0)/10000).toLocaleString()}万`);
+          const sY = ev.startYear || ev.year || 1;
+          const eY = ev.endYear || ev.year || 1;
+          if (item.year >= sY && item.year <= eY) {
+            const val = ev.type === 'monthly' ? (Number(ev.amount)||0) * 12 : (Number(ev.amount)||0);
+            speTotal += val;
+            speDesc.push(`${ev.name}${ev.type==='monthly'?'(年換算)':''}:¥${Math.round(val/10000).toLocaleString()}万`);
           }
         });
 
-        let curNisaMonth = 0;
-        for (let b of nisaBlocks) {
-          if (item.year >= b.startYear && item.year <= b.endYear) {
-            curNisaMonth = Number(b.monthly) || 0;
-            break;
-          }
-        }
-        const curNisaYear = curNisaMonth * 12;
+        const curNisaYear = curRes.nisaFlowArr[i];
         const curCash = curRes.cashArr[i];
         if (curCash < safetyLimit) safetyAlertYears.push(`${item.year}年目(¥${Math.round(curCash/10000)}万)`);
 
-        const netF = curRes.incArr[i] - curRes.expArr[i];
+        const netSavings = curRes.netCashflowArr[i];
+        const netCashInc = curRes.netSavingsArr[i];
 
         if (incTbody) incTbody.innerHTML += `<tr><td class="p-1.5">${item.year}年目(${item.age}歳)</td><td class="p-1.5">${item.grade}</td><td class="p-1.5">¥${Math.round(baseM*dFactor).toLocaleString()}</td><td class="p-1.5">${item.hasOt ? '¥'+Math.round(otM*dFactor).toLocaleString() : '-'}</td><td class="p-1.5">¥${Math.round(bonM*dFactor).toLocaleString()}</td><td class="p-1.5 font-semibold">¥${Math.round(gross*dFactor).toLocaleString()}</td><td class="p-1.5 font-bold text-blue-800">¥${curRes.incArr[i].toLocaleString()}</td></tr>`;
-        if (expTbody) expTbody.innerHTML += `<tr><td class="p-1.5">${item.year}年目(${item.age}歳)</td><td class="p-1.5 text-emerald-700">${matchedPhase}</td><td class="p-1.5">¥${Math.round(annLiv*dFactor).toLocaleString()}</td><td class="p-1.5">¥${Math.round(curNisaYear*dFactor).toLocaleString()}</td><td class="p-1.5 text-rose-600">${speDesc.length ? speDesc.join(', ') : '-'}</td><td class="p-1.5 font-bold text-emerald-900">¥${curRes.expArr[i].toLocaleString()}</td></tr>`;
-        if (astTbody) astTbody.innerHTML += `<tr><td class="p-1.5">${item.year}年目(${item.age}歳)</td><td class="p-1.5 font-semibold ${netF>=0?'text-blue-600':'text-rose-600'}">${netF>=0?'+':''}¥${netF.toLocaleString()}</td><td class="p-1.5 font-bold ${curCash<safetyLimit?'text-rose-600 bg-rose-50':'text-emerald-700'}">¥${curCash.toLocaleString()}</td><td class="p-1.5 font-bold text-indigo-700">¥${curRes.nisaArr[i].toLocaleString()}</td><td class="p-1.5 font-bold text-blue-800">¥${curRes.totalArr[i].toLocaleString()}</td></tr>`;
+        if (expTbody) expTbody.innerHTML += `<tr><td class="p-1.5">${item.year}年目(${item.age}歳)</td><td class="p-1.5 text-emerald-700">${matchedPhase}</td><td class="p-1.5">¥${Math.round(annLiv*dFactor).toLocaleString()}</td><td class="p-1.5 text-rose-600">${speDesc.length ? speDesc.join(', ') : '-'}</td><td class="p-1.5 font-bold text-emerald-900">¥${curRes.expArr[i].toLocaleString()}</td><td class="p-1.5 font-semibold text-indigo-700">¥${curNisaYear.toLocaleString()}</td></tr>`;
+        if (astTbody) astTbody.innerHTML += `<tr><td class="p-1.5">${item.year}年目(${item.age}歳)</td><td class="p-1.5 font-semibold ${netSavings>=0?'text-blue-600':'text-rose-600'}">${netSavings>=0?'+':''}¥${netSavings.toLocaleString()}</td><td class="p-1.5 font-semibold ${netCashInc>=0?'text-emerald-700':'text-rose-600'}">${netCashInc>=0?'+':''}¥${netCashInc.toLocaleString()}</td><td class="p-1.5 font-bold ${curCash<safetyLimit?'text-rose-600 bg-rose-50':'text-emerald-700'}">¥${curCash.toLocaleString()}</td><td class="p-1.5 font-bold text-indigo-700">¥${curRes.nisaArr[i].toLocaleString()}</td><td class="p-1.5 font-bold text-blue-800">¥${curRes.totalArr[i].toLocaleString()}</td></tr>`;
       }
 
+      const finalAssetVal = Math.round(curRes.totalArr[curRes.totalArr.length-1] / 10000);
+      const finalNisaVal = Math.round(curRes.nisaArr[curRes.nisaArr.length-1] / 10000);
+      const minCashVal = Math.round(curRes.minC / 10000);
+      const totalEarnedMan = Math.round(curRes.totEarned / 10000);
+      const totalExpenseMan = Math.round(curRes.totConsumption / 10000);
+
       const elFinalAsset = document.getElementById('kpiFinalAsset');
-      if (elFinalAsset) elFinalAsset.innerText = '¥' + (curRes.totalArr[curRes.totalArr.length-1]/10000).toLocaleString() + '万円';
+      if (elFinalAsset) elFinalAsset.innerText = `¥${finalAssetVal.toLocaleString()}万円`;
 
       const elFinalNisa = document.getElementById('kpiFinalNisa');
-      if (elFinalNisa) elFinalNisa.innerText = '¥' + (curRes.nisaArr[curRes.nisaArr.length-1]/10000).toLocaleString() + '万円';
+      if (elFinalNisa) elFinalNisa.innerText = `¥${finalNisaVal.toLocaleString()}万円`;
 
       const elMinCash = document.getElementById('kpiMinCash');
-      if (elMinCash) elMinCash.innerText = '¥' + (curRes.minC/10000).toLocaleString() + '万円';
+      if (elMinCash) elMinCash.innerText = `¥${minCashVal.toLocaleString()}万円`;
 
       const elMinCashYear = document.getElementById('kpiMinCashYear');
       if (elMinCashYear) elMinCashYear.innerText = `到達: ${curRes.minCYear}年目時点`;
 
       const elTotalFlow = document.getElementById('kpiTotalFlow');
-      if (elTotalFlow) elTotalFlow.innerText = `手取: ¥${Math.round(curRes.totEarned/10000).toLocaleString()}万 / 支出: ¥${Math.round(curRes.totSpent/10000).toLocaleString()}万`;
+      if (elTotalFlow) elTotalFlow.innerText = `手取: ¥${totalEarnedMan.toLocaleString()}万 / 支出: ¥${totalExpenseMan.toLocaleString()}万`;
+
+      const savingsRate = curRes.totEarned > 0 ? (((curRes.totEarned - curRes.totConsumption) / curRes.totEarned) * 100).toFixed(1) : 0;
+      const elSavingsRate = document.getElementById('kpiSavingsRate');
+      if (elSavingsRate) elSavingsRate.innerText = `平均貯蓄余力: ${savingsRate}%`;
 
       const alertEl = document.getElementById('safetyAlertBanner');
       if (alertEl) {
@@ -1037,7 +1084,8 @@
           cData.bonusMonths || 6.0,
           (cData.bearRate || 0)/100,
           cData.toggleAutoBear || false,
-          inflation
+          inflation,
+          cData.nisaGlobalRate || globalNisaRate
         );
         compareDatasets = [
           {
@@ -1058,7 +1106,6 @@
         ];
       }
 
-      // チャート描画（明示的DOM存在チェック）
       const canvasAsset = document.getElementById('assetChart');
       if (canvasAsset && canvasAsset.offsetParent !== null) {
         if (assetChart) assetChart.destroy();
@@ -1092,7 +1139,7 @@
             labels: labels,
             datasets: [
               { label: '手取り収入', data: curRes.incArr, backgroundColor: '#3b82f6' },
-              { label: '年間総支出', data: curRes.expArr, backgroundColor: '#f43f5e' }
+              { label: '年間消費支出', data: curRes.expArr, backgroundColor: '#f43f5e' }
             ]
           },
           options: {
@@ -1114,9 +1161,9 @@
             labels: labels,
             datasets: [
               { label: '生活費%', data: curRes.rLiving, backgroundColor: '#10b981' },
+              { label: '特別支出・ローン%', data: curRes.rSpecial, backgroundColor: '#f43f5e' },
               { label: 'NISA投資%', data: curRes.rNisa, backgroundColor: '#6366f1' },
-              { label: '特別支出%', data: curRes.rSpecial, backgroundColor: '#f43f5e' },
-              { label: '純預金増加%', data: curRes.rSavings, backgroundColor: '#3b82f6' }
+              { label: '純預金増加%', data: curRes.rPureSavings, backgroundColor: '#3b82f6' }
             ]
           },
           options: {
@@ -1133,18 +1180,38 @@
       const canvasPie = document.getElementById('pieChart');
       if (canvasPie && canvasPie.offsetParent !== null) {
         if (pieChart) pieChart.destroy();
+        const totalAllocation = curRes.sLiv + curRes.sSpe + curRes.sNis;
+        const pLiv = totalAllocation > 0 ? ((curRes.sLiv / totalAllocation) * 100).toFixed(1) : 0;
+        const pSpe = totalAllocation > 0 ? ((curRes.sSpe / totalAllocation) * 100).toFixed(1) : 0;
+        const pNis = totalAllocation > 0 ? ((curRes.sNis / totalAllocation) * 100).toFixed(1) : 0;
+
         pieChart = new Chart(canvasPie.getContext('2d'), {
           type: 'doughnut',
           data: {
-            labels: ['生活費計', 'NISA投資計', '特別支出計'],
+            labels: [
+              `生活費: ${pLiv}%`,
+              `特別支出・ローン: ${pSpe}%`,
+              `NISA積立(投資): ${pNis}%`
+            ],
             datasets: [{
-              data: [curRes.sLiv, curRes.sNis, curRes.sSpe],
-              backgroundColor: ['#10b981', '#6366f1', '#f43f5e']
+              data: [curRes.sLiv, curRes.sSpe, curRes.sNis],
+              backgroundColor: ['#10b981', '#f43f5e', '#6366f1']
             }]
           },
           options: {
             responsive: true,
-            maintainAspectRatio: false
+            maintainAspectRatio: false,
+            plugins: {
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    const val = context.raw || 0;
+                    const pct = totalAllocation > 0 ? ((val / totalAllocation) * 100).toFixed(1) : 0;
+                    return ` ¥${Math.round(val/10000).toLocaleString()}万円 (${pct}%)`;
+                  }
+                }
+              }
+            }
           }
         });
       }
