@@ -12,14 +12,43 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <style>
     @media print {
-      body { background-color: #ffffff !important; padding: 0 !important; color: #000000 !important; }
+      @page {
+        size: A4 portrait;
+        margin: 10mm;
+      }
+      body {
+        background-color: #ffffff !important;
+        padding: 0 !important;
+        color: #000000 !important;
+        font-size: 11px !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
       .no-print { display: none !important; }
       .print-only { display: block !important; }
-      .page-break-before { page-break-before: always; }
+      #resultTabContent, #inputTabContent { display: block !important; }
+      .page-break-before { page-break-before: always !important; }
       .avoid-break { page-break-inside: avoid !important; }
-      .card { border: 1px solid #cbd5e1 !important; box-shadow: none !important; margin-bottom: 1rem !important; }
-      table { font-size: 9px !important; }
-      th, td { padding: 3px 5px !important; }
+      .card {
+        border: 1px solid #cbd5e1 !important;
+        box-shadow: none !important;
+        margin-bottom: 0.8rem !important;
+        padding: 0.6rem !important;
+      }
+      table {
+        width: 100% !important;
+        font-size: 8.5px !important;
+      }
+      th, td {
+        padding: 2.5px 4px !important;
+      }
+      .chart-container {
+        height: 200px !important;
+        width: 100% !important;
+      }
+      .grid {
+        display: grid !important;
+      }
     }
     .print-only { display: none; }
     .chart-container { position: relative; height: 260px; width: 100%; }
@@ -41,11 +70,14 @@
   </div>
 
   <!-- シミュレーター本体 -->
-  <div id="appScreen" class="max-w-7xl mx-auto space-y-5 hidden">
+  <div id="appScreen" class="max-w-7xl mx-auto space-y-4 hidden">
     <!-- 印刷用ヘッダー -->
-    <div class="print-only border-b pb-3 mb-3">
-      <h1 class="text-xl font-bold text-slate-900">ライフプラン＆資産形成シミュレーション レポート</h1>
-      <p class="text-[11px] text-slate-500 mt-1">出力日時: <span id="printDate"></span> | 対象シナリオ: <span id="printScenarioName">標準プラン</span></p>
+    <div class="print-only border-b border-slate-300 pb-2 mb-2">
+      <div class="flex justify-between items-baseline">
+        <h1 class="text-lg font-bold text-slate-900">ライフプラン＆資産形成シミュレーション レポート</h1>
+        <span class="text-[10px] text-slate-500">出力日時: <span id="printDate"></span></span>
+      </div>
+      <p class="text-[10px] text-slate-600 mt-0.5">対象シナリオ: <span id="printScenarioName" class="font-bold">標準プラン</span></p>
     </div>
 
     <!-- Web操作用ヘッダー -->
@@ -99,62 +131,132 @@
       <span id="safetyAlertText">生活防衛資金を下回る年次が存在します。</span>
     </div>
 
-    <!-- 重要サマリー KPI カード -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 avoid-break">
-      <div class="card bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
-        <span class="text-[11px] text-slate-500 font-medium">最終到達 総純資産</span>
-        <div id="kpiFinalAsset" class="text-base md:text-xl font-bold text-blue-600 mt-1">¥0</div>
-        <span id="kpiFinalYearText" class="text-[10px] text-slate-400">計算終了年時点</span>
+    <!-- メインタブ切り替えバー（Web表示用） -->
+    <div class="no-print flex border-b border-slate-200 gap-2">
+      <button id="tabBtnResult" onclick="switchMainTab('result')" class="py-2.5 px-5 font-bold text-sm border-b-2 border-blue-600 text-blue-600 transition flex items-center gap-1.5">
+        <span>📊</span> シミュレーション結果・グラフ
+      </button>
+      <button id="tabBtnInput" onclick="switchMainTab('input')" class="py-2.5 px-5 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition flex items-center gap-1.5">
+        <span>⚙️</span> 条件・パラメータ設定
+      </button>
+    </div>
+
+    <!-- ==================== 出力・結果タブ ==================== -->
+    <div id="resultTabContent" class="space-y-5">
+      <!-- 重要サマリー KPI カード -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 avoid-break">
+        <div class="card bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
+          <span class="text-[11px] text-slate-500 font-medium">最終到達 総純資産</span>
+          <div id="kpiFinalAsset" class="text-base md:text-xl font-bold text-blue-600 mt-1">¥0</div>
+          <span id="kpiFinalYearText" class="text-[10px] text-slate-400">計算終了年時点</span>
+        </div>
+        <div class="card bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <span class="text-[11px] text-slate-500 font-medium">最終到達 運用残高(NISA)</span>
+          <div id="kpiFinalNisa" class="text-base md:text-xl font-bold text-indigo-600 mt-1">¥0</div>
+          <span class="text-[10px] text-slate-400">複利運用込み評価額</span>
+        </div>
+        <div class="card bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <span class="text-[11px] text-slate-500 font-medium">期間内 最低普通預金</span>
+          <div id="kpiMinCash" class="text-base md:text-xl font-bold text-emerald-600 mt-1">¥0</div>
+          <span id="kpiMinCashYear" class="text-[10px] text-slate-400">キャッシュの底</span>
+        </div>
+        <div class="card bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <span class="text-[11px] text-slate-500 font-medium">生涯手取り vs 総支出</span>
+          <div id="kpiTotalFlow" class="text-xs font-bold text-slate-700 mt-1">¥0 / ¥0</div>
+          <span id="kpiSavingsRate" class="text-[10px] text-blue-600 font-semibold">平均貯蓄余力: 0%</span>
+        </div>
       </div>
-      <div class="card bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-        <span class="text-[11px] text-slate-500 font-medium">最終到達 運用残高(NISA)</span>
-        <div id="kpiFinalNisa" class="text-base md:text-xl font-bold text-indigo-600 mt-1">¥0</div>
-        <span class="text-[10px] text-slate-400">複利運用込み評価額</span>
+
+      <!-- 印刷用サマリー（PDF時に前提条件を網羅） -->
+      <div class="print-only card bg-white p-3 rounded-lg border border-slate-300 text-xs avoid-break">
+        <h3 class="font-bold text-slate-900 border-b pb-1 mb-1.5 text-[11px]">【シミュレーション前提条件】</h3>
+        <div class="grid grid-cols-4 gap-1.5 text-[9.5px] mb-2" id="printConditionSummary"></div>
+        <div class="border-t pt-1.5">
+          <strong class="text-[9.5px] block mb-1 text-slate-800">各フェーズの支出内訳:</strong>
+          <div id="printPhasesSummary" class="grid grid-cols-2 gap-2 text-[8.5px] text-slate-700"></div>
+        </div>
       </div>
-      <div class="card bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-        <span class="text-[11px] text-slate-500 font-medium">期間内 最低普通預金</span>
-        <div id="kpiMinCash" class="text-base md:text-xl font-bold text-emerald-600 mt-1">¥0</div>
-        <span id="kpiMinCashYear" class="text-[10px] text-slate-400">キャッシュの底</span>
+
+      <!-- グラフエリア -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 card bg-white p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 avoid-break">
+        <div>
+          <h3 class="font-bold text-xs md:text-sm mb-2 text-slate-800">■ 資産推移（純資産・現金・NISA・比較）</h3>
+          <div class="chart-container"><canvas id="assetChart"></canvas></div>
+        </div>
+        <div>
+          <h3 class="font-bold text-xs md:text-sm mb-2 text-slate-800">■ 年間収支（手取り収入 vs 年間消費支出）</h3>
+          <div class="chart-container"><canvas id="cashflowChart"></canvas></div>
+        </div>
+        <div>
+          <h3 class="font-bold text-xs md:text-sm mb-2 text-slate-800">■ 手取り収入の使途バランス割合推移 (%)</h3>
+          <div class="chart-container"><canvas id="ratioChart"></canvas></div>
+        </div>
+        <div>
+          <h3 class="font-bold text-xs md:text-sm mb-2 text-slate-800">■ 期間累計・支出用途別シェア</h3>
+          <div class="chart-container flex items-center justify-center"><canvas id="pieChart"></canvas></div>
+        </div>
       </div>
-      <div class="card bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-        <span class="text-[11px] text-slate-500 font-medium">生涯手取り vs 総支出</span>
-        <div id="kpiTotalFlow" class="text-xs font-bold text-slate-700 mt-1">¥0 / ¥0</div>
-        <span id="kpiSavingsRate" class="text-[10px] text-blue-600 font-semibold">平均貯蓄余力: 0%</span>
+
+      <!-- テーブル1: 収入詳細 -->
+      <div class="card bg-white p-4 rounded-xl border border-slate-200 overflow-x-auto avoid-break">
+        <h3 class="font-bold text-xs md:text-sm mb-2 text-blue-700">■ 収入詳細分類表</h3>
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="bg-blue-50 border-b text-blue-900">
+              <th class="p-1.5">年次(年齢)</th>
+              <th class="p-1.5">等級</th>
+              <th class="p-1.5">基本月給</th>
+              <th class="p-1.5">残業代</th>
+              <th class="p-1.5">賞与</th>
+              <th class="p-1.5 font-bold">額面年収</th>
+              <th class="p-1.5 font-bold text-blue-800">手取り年収</th>
+            </tr>
+          </thead>
+          <tbody id="incomeTableBody" class="divide-y divide-slate-200"></tbody>
+        </table>
+      </div>
+
+      <div class="page-break-before"></div>
+
+      <!-- テーブル2: 支出詳細 -->
+      <div class="card bg-white p-4 rounded-xl border border-slate-200 overflow-x-auto avoid-break">
+        <h3 class="font-bold text-xs md:text-sm mb-2 text-emerald-700">■ 支出詳細分類表（消費支出）</h3>
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="bg-emerald-50 border-b text-emerald-900">
+              <th class="p-1.5">年次(年齢)</th>
+              <th class="p-1.5">適用フェーズ</th>
+              <th class="p-1.5">年間生活費</th>
+              <th class="p-1.5">特別支出・ローン</th>
+              <th class="p-1.5 font-bold text-emerald-900">年間総支出(消費)</th>
+              <th class="p-1.5 font-bold text-indigo-700">参考: NISA積立</th>
+            </tr>
+          </thead>
+          <tbody id="expenseTableBody" class="divide-y divide-slate-200"></tbody>
+        </table>
+      </div>
+
+      <!-- テーブル3: 資産推移 -->
+      <div class="card bg-white p-4 rounded-xl border border-slate-200 overflow-x-auto avoid-break">
+        <h3 class="font-bold text-xs md:text-sm mb-2 text-purple-700">■ 資産推移詳細表</h3>
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="bg-purple-50 border-b text-purple-900">
+              <th class="p-1.5">年次(年齢)</th>
+              <th class="p-1.5 font-semibold text-blue-700">純貯蓄余力 (手取-支出)</th>
+              <th class="p-1.5 font-semibold text-emerald-600">預金増減 (余力-NISA)</th>
+              <th class="p-1.5 font-bold text-emerald-700">普通預金残高</th>
+              <th class="p-1.5 font-bold text-indigo-700">NISA残高</th>
+              <th class="p-1.5 font-bold text-blue-800">総純資産</th>
+            </tr>
+          </thead>
+          <tbody id="assetTableBody" class="divide-y divide-slate-200"></tbody>
+        </table>
       </div>
     </div>
 
-    <!-- 印刷用サマリー -->
-    <div class="print-only card bg-white p-4 rounded-xl border border-slate-300 text-xs avoid-break">
-      <h3 class="font-bold text-slate-900 border-b pb-1 mb-2">【シミュレーション前提条件】</h3>
-      <div class="grid grid-cols-4 gap-2 text-[10px] mb-2" id="printConditionSummary"></div>
-      <div class="border-t pt-1.5">
-        <strong class="text-[10px] block mb-0.5 text-slate-800">フェーズ構成:</strong>
-        <div id="printPhasesSummary" class="text-[9px] space-y-0.5 text-slate-700"></div>
-      </div>
-    </div>
-
-    <!-- グラフエリア -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 card bg-white p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 avoid-break">
-      <div>
-        <h3 class="font-bold text-xs md:text-sm mb-2 text-slate-800">■ 資産推移（純資産・現金・NISA・比較）</h3>
-        <div class="chart-container"><canvas id="assetChart"></canvas></div>
-      </div>
-      <div>
-        <h3 class="font-bold text-xs md:text-sm mb-2 text-slate-800">■ 年間収支（手取り収入 vs 年間消費支出）</h3>
-        <div class="chart-container"><canvas id="cashflowChart"></canvas></div>
-      </div>
-      <div>
-        <h3 class="font-bold text-xs md:text-sm mb-2 text-slate-800">■ 手取り収入の使途バランス割合推移 (%)</h3>
-        <div class="chart-container"><canvas id="ratioChart"></canvas></div>
-      </div>
-      <div>
-        <h3 class="font-bold text-xs md:text-sm mb-2 text-slate-800">■ 期間累計・支出用途別シェア</h3>
-        <div class="chart-container flex items-center justify-center"><canvas id="pieChart"></canvas></div>
-      </div>
-    </div>
-
-    <!-- 設定・編集コントロール -->
-    <div class="no-print space-y-5">
+    <!-- ==================== 入力・設定タブ ==================== -->
+    <div id="inputTabContent" class="space-y-5 hidden">
       <!-- 1. 全体設定 ＆ 補助機能トグル -->
       <div class="bg-white p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 border-b pb-2">
@@ -279,63 +381,6 @@
         <div id="phaseDetailEditors" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3"></div>
       </div>
     </div>
-
-    <!-- テーブル1: 収入詳細 -->
-    <div class="card bg-white p-4 rounded-xl border border-slate-200 overflow-x-auto avoid-break">
-      <h3 class="font-bold text-xs md:text-sm mb-2 text-blue-700">■ 収入詳細分類表</h3>
-      <table class="w-full text-left text-xs border-collapse">
-        <thead>
-          <tr class="bg-blue-50 border-b text-blue-900">
-            <th class="p-1.5">年次(年齢)</th>
-            <th class="p-1.5">等級</th>
-            <th class="p-1.5">基本月給</th>
-            <th class="p-1.5">残業代</th>
-            <th class="p-1.5">賞与</th>
-            <th class="p-1.5 font-bold">額面年収</th>
-            <th class="p-1.5 font-bold text-blue-800">手取り年収</th>
-          </tr>
-        </thead>
-        <tbody id="incomeTableBody" class="divide-y divide-slate-200"></tbody>
-      </table>
-    </div>
-
-    <div class="page-break-before"></div>
-
-    <!-- テーブル2: 支出詳細 -->
-    <div class="card bg-white p-4 rounded-xl border border-slate-200 overflow-x-auto avoid-break">
-      <h3 class="font-bold text-xs md:text-sm mb-2 text-emerald-700">■ 支出詳細分類表（消費支出）</h3>
-      <table class="w-full text-left text-xs border-collapse">
-        <thead>
-          <tr class="bg-emerald-50 border-b text-emerald-900">
-            <th class="p-1.5">年次(年齢)</th>
-            <th class="p-1.5">適用フェーズ</th>
-            <th class="p-1.5">年間生活費</th>
-            <th class="p-1.5">特別支出・ローン</th>
-            <th class="p-1.5 font-bold text-emerald-900">年間総支出(消費)</th>
-            <th class="p-1.5 font-bold text-indigo-700">参考: NISA積立</th>
-          </tr>
-        </thead>
-        <tbody id="expenseTableBody" class="divide-y divide-slate-200"></tbody>
-      </table>
-    </div>
-
-    <!-- テーブル3: 資産推移 -->
-    <div class="card bg-white p-4 rounded-xl border border-slate-200 overflow-x-auto avoid-break">
-      <h3 class="font-bold text-xs md:text-sm mb-2 text-purple-700">■ 資産推移詳細表</h3>
-      <table class="w-full text-left text-xs border-collapse">
-        <thead>
-          <tr class="bg-purple-50 border-b text-purple-900">
-            <th class="p-1.5">年次(年齢)</th>
-            <th class="p-1.5 font-semibold text-blue-700">純貯蓄余力 (手取-支出)</th>
-            <th class="p-1.5 font-semibold text-emerald-600">預金増減 (余力-NISA)</th>
-            <th class="p-1.5 font-bold text-emerald-700">普通預金残高</th>
-            <th class="p-1.5 font-bold text-indigo-700">NISA残高</th>
-            <th class="p-1.5 font-bold text-blue-800">総純資産</th>
-          </tr>
-        </thead>
-        <tbody id="assetTableBody" class="divide-y divide-slate-200"></tbody>
-      </table>
-    </div>
   </div>
 
   <script>
@@ -383,6 +428,30 @@
     let isRealValueMode = false;
     let currentScenarioId = "default";
     let allScenariosMap = {};
+
+    function switchMainTab(tab) {
+      const resultEl = document.getElementById('resultTabContent');
+      const inputEl = document.getElementById('inputTabContent');
+      const btnResult = document.getElementById('tabBtnResult');
+      const btnInput = document.getElementById('tabBtnInput');
+
+      if (tab === 'result') {
+        resultEl.classList.remove('hidden');
+        inputEl.classList.add('hidden');
+        btnResult.className = "py-2.5 px-5 font-bold text-sm border-b-2 border-blue-600 text-blue-600 transition flex items-center gap-1.5";
+        btnInput.className = "py-2.5 px-5 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition flex items-center gap-1.5";
+        // グラフ再描画（タブ表示切り替え時のサイズ崩れ防止）
+        if (assetChart) assetChart.resize();
+        if (cfChart) cfChart.resize();
+        if (ratioChart) ratioChart.resize();
+        if (pieChart) pieChart.resize();
+      } else {
+        resultEl.classList.add('hidden');
+        inputEl.classList.remove('hidden');
+        btnInput.className = "py-2.5 px-5 font-bold text-sm border-b-2 border-blue-600 text-blue-600 transition flex items-center gap-1.5";
+        btnResult.className = "py-2.5 px-5 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition flex items-center gap-1.5";
+      }
+    }
 
     const defaultNisaBlocks = [
       { startYear: 1, endYear: 2, monthly: 50000 },
@@ -462,7 +531,7 @@
       { startYear: 2, endYear: 2, name: "親返済完済", amount: 540000, type: "yearly" },
       { startYear: 4, endYear: 4, name: "寮退去・引越敷礼", amount: 300000, type: "yearly" },
       { startYear: 5, endYear: 5, name: "車頭金", amount: 1000000, type: "yearly" },
-      { startYear: 5, endYear: 9, name: "車ローン(5年)", amount: 50000, type: "monthly" },
+      { startYear: 5, endYear: 9, name: "車ローン", amount: 50000, type: "monthly" },
       { startYear: 7, endYear: 7, name: "結婚費用自腹", amount: 2000000, type: "yearly" }
     ];
 
@@ -756,9 +825,6 @@
       calculate();
     }
 
-    /**
-     * フェーズ別詳細支出エディタ（画面幅縮小時のはみ出し・改行崩れ防止対応）
-     */
     function renderPhaseDetailEditors() {
       const container = document.getElementById('phaseDetailEditors');
       if (!container) return;
@@ -962,6 +1028,7 @@
 
     function calculate() {
       const calcYears = Math.min(40, Math.max(1, Number(document.getElementById('calcYears')?.value) || 10));
+      const startSal = Number(document.getElementById('startingSalary')?.value) || 340000;
       const bonusMonths = Number(document.getElementById('bonusMonths')?.value) || 6.0;
       const safetyLimit = (Number(document.getElementById('safetyCash')?.value) || 100) * 10000;
       const inflation = (Number(document.getElementById('inflationRate')?.value) || 1.0) / 100;
@@ -973,6 +1040,36 @@
         salaryMaster, phases, customEvents, nisaBlocks,
         calcYears, bonusMonths, bearRate, isAutoBear, inflation, globalNisaRate
       );
+
+      // 印刷用サマリー条件の自動生成
+      const printCond = document.getElementById('printConditionSummary');
+      if (printCond) {
+        printCond.innerHTML = `
+          <div><strong>計算年数:</strong> ${calcYears}年</div>
+          <div><strong>初任給:</strong> ¥${startSal.toLocaleString()}</div>
+          <div><strong>想定賞与:</strong> 年${bonusMonths}ヶ月</div>
+          <div><strong>NISA利回り:</strong> ${globalNisaRate}%/年</div>
+          <div><strong>生活防衛資金:</strong> ¥${(safetyLimit/10000).toLocaleString()}万円</div>
+          <div><strong>想定インフレ率:</strong> ${(inflation*100).toFixed(1)}%/年</div>
+          <div><strong>ベア自動適用:</strong> ${isAutoBear ? '有効 ('+(bearRate*100).toFixed(1)+'%)' : '無効'}</div>
+          <div><strong>表示基準:</strong> ${isRealValueMode ? '実質価値' : '名目額'}</div>
+        `;
+      }
+
+      const printPhases = document.getElementById('printPhasesSummary');
+      if (printPhases) {
+        let phtml = '';
+        phases.forEach(p => {
+          let itemsText = p.items ? p.items.map(it => `${it.name}: ¥${it.amount.toLocaleString()}(${it.type==='monthly'?'月':'年'})`).join(', ') : 'なし';
+          phtml += `
+            <div class="border-b border-slate-200 pb-1">
+              <span class="font-bold text-slate-800">${p.name} (${p.startYear}〜${p.endYear}年目):</span>
+              <span class="text-slate-600">${itemsText}</span>
+            </div>
+          `;
+        });
+        printPhases.innerHTML = phtml;
+      }
 
       const labels = [];
       const incTbody = document.getElementById('incomeTableBody');
@@ -1123,6 +1220,7 @@
           options: {
             responsive: true,
             maintainAspectRatio: false,
+            animation: false,
             scales: {
               y: { ticks: { callback: v => '¥' + (v/10000).toLocaleString() + '万' } }
             }
@@ -1145,6 +1243,7 @@
           options: {
             responsive: true,
             maintainAspectRatio: false,
+            animation: false,
             scales: {
               y: { ticks: { callback: v => '¥' + (v/10000).toLocaleString() + '万' } }
             }
@@ -1169,6 +1268,7 @@
           options: {
             responsive: true,
             maintainAspectRatio: false,
+            animation: false,
             scales: {
               x: { stacked: true },
               y: { stacked: true, max: 100 }
@@ -1201,6 +1301,7 @@
           options: {
             responsive: true,
             maintainAspectRatio: false,
+            animation: false,
             plugins: {
               tooltip: {
                 callbacks: {
