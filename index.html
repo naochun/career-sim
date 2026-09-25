@@ -34,7 +34,7 @@
     <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 text-center max-w-sm w-full">
       <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">🔒</div>
       <h2 class="text-xl font-bold text-slate-900 mb-2">キャリア＆資産シミュレーター</h2>
-      <p class="text-xs text-slate-500 mb-6">許可されたGoogleアカウントでログインすると、マルチシナリオ保存機能が利用可能になります。</p>
+      <p class="text-xs text-slate-500 mb-6">許可されたGoogleアカウントでログインすると、マルチデバイス同期・複数シナリオ管理が利用可能になります。</p>
       <button onclick="loginWithGoogle()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 px-4 rounded-xl shadow flex items-center justify-center gap-2 text-sm transition">
         <span>Googleでサインイン</span>
       </button>
@@ -72,7 +72,7 @@
       </div>
     </header>
 
-    <!-- シナリオ管理バー（複数シナリオ保存・切替） -->
+    <!-- シナリオ管理バー -->
     <div class="no-print bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 p-3.5 rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs">
       <div class="flex flex-wrap items-center gap-2">
         <span class="font-bold text-blue-900 flex items-center gap-1">📁 シナリオ選択:</span>
@@ -142,7 +142,7 @@
     <!-- グラフエリア（4大チャート対応） -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 card bg-white p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 avoid-break">
       <div>
-        <h3 class="font-bold text-xs md:text-sm mb-2 text-slate-800">■ 資産推移（純資産・現金・NISA・シナリオ比較）</h3>
+        <h3 class="font-bold text-xs md:text-sm mb-2 text-slate-800">■ 資産推移（純資産・現金・NISA・比較）</h3>
         <div class="h-60"><canvas id="assetChart"></canvas></div>
       </div>
       <div>
@@ -219,23 +219,26 @@
         <div id="nisaBlocksContainer" class="space-y-2 text-xs"></div>
       </div>
 
-      <!-- 3. 昇給テーブルエディタ -->
+      <!-- 3. 年次別昇給テーブル（完全直接編集） -->
       <div class="bg-white p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
-        <div class="border-b pb-2 flex justify-between items-center">
-          <h2 class="font-bold text-xs md:text-sm text-blue-700 flex items-center gap-1.5">
-            <span>📈</span> 3. 年次別昇給テーブル（完全直接編集）
-          </h2>
-          <span class="text-[11px] text-slate-400">残業代の有無や等級名を自由に設定できます</span>
+        <div class="border-b pb-2 flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
+          <div>
+            <h2 class="font-bold text-xs md:text-sm text-blue-700 flex items-center gap-1.5">
+              <span>📈</span> 3. 年次別昇給テーブル（完全直接編集）
+            </h2>
+            <p class="text-[11px] text-slate-500">各年次の役職名、基本月給、想定残業時間、残業代適用の有無をセル内で直接編集できます。</p>
+          </div>
+          <span class="text-[11px] bg-blue-50 text-blue-800 px-2.5 py-1 rounded border border-blue-200 font-medium">全社歴・個別編集対応</span>
         </div>
-        <div class="overflow-x-auto max-h-64 border rounded-lg">
+        <div class="overflow-x-auto max-h-80 border rounded-lg">
           <table class="w-full text-left text-xs border-collapse">
-            <thead class="bg-slate-100 text-slate-700 sticky top-0">
+            <thead class="bg-slate-100 text-slate-700 sticky top-0 shadow-sm">
               <tr>
-                <th class="p-2 w-20">年次(年齢)</th>
-                <th class="p-2">役職・等級名</th>
-                <th class="p-2 w-32">基本月給(円)</th>
-                <th class="p-2 w-24 text-center">残業(h/月)</th>
-                <th class="p-2 w-20 text-center">残業代対象</th>
+                <th class="p-2 w-24">年次(年齢)</th>
+                <th class="p-2 min-w-[140px]">役職・等級名</th>
+                <th class="p-2 w-36">基準基本月給 (円)</th>
+                <th class="p-2 w-28 text-center">残業時間 (h/月)</th>
+                <th class="p-2 w-24 text-center">残業代支給</th>
               </tr>
             </thead>
             <tbody id="salaryTableEditorBody" class="divide-y divide-slate-200 bg-white"></tbody>
@@ -335,7 +338,6 @@
   </div>
 
   <script>
-    // Firebase初期設定
     const firebaseConfig = {
       apiKey: "AIzaSyCTTsKxeUmgFYCbzbYJwur4LhXxxBIhm5g",
       authDomain: "career-simulator-39847.firebaseapp.com",
@@ -376,18 +378,17 @@
       }
     });
 
-    // 状態管理
     let isRealValueMode = false;
     let currentScenarioId = "default";
-    let allScenariosMap = {}; // キャッシュ
+    let allScenariosMap = {};
 
-    // モデルデータ
-    let nisaBlocks = [
+    // デフォルト・初期マスタデータ
+    const defaultNisaBlocks = [
       { startYear: 1, endYear: 2, monthly: 50000, rate: 5.0 },
       { startYear: 3, endYear: 10, monthly: 100000, rate: 5.0 }
     ];
 
-    let salaryMaster = [
+    const defaultSalaryMaster = [
       { year: 1, age: 24, grade: "専門1級(1年目)", baseMonthly: 340000, otHours: 15, hasOt: true },
       { year: 2, age: 25, grade: "専門1級(2年目)", baseMonthly: 342000, otHours: 15, hasOt: true },
       { year: 3, age: 26, grade: "統括2級(3年目)", baseMonthly: 362000, otHours: 15, hasOt: true },
@@ -400,7 +401,7 @@
       { year: 10, age: 33, grade: "主査(10年目)", baseMonthly: 590000, otHours: 0, hasOt: false }
     ];
 
-    let phases = [
+    const defaultPhases = [
       {
         name: "フェーズ0：新生活期",
         startYear: 1, endYear: 2,
@@ -453,7 +454,7 @@
       }
     ];
 
-    let customEvents = [
+    const defaultCustomEvents = [
       { year: 1, name: "親への返済", amount: 460000 },
       { year: 2, name: "親返済完済", amount: 540000 },
       { year: 4, name: "寮退去・引越敷礼", amount: 300000 },
@@ -461,7 +462,11 @@
       { year: 7, name: "結婚費用自腹", amount: 2000000 }
     ];
 
-    // シナリオ管理システム
+    let nisaBlocks = JSON.parse(JSON.stringify(defaultNisaBlocks));
+    let salaryMaster = JSON.parse(JSON.stringify(defaultSalaryMaster));
+    let phases = JSON.parse(JSON.stringify(defaultPhases));
+    let customEvents = JSON.parse(JSON.stringify(defaultCustomEvents));
+
     function getScenarioDocRef(scenarioId) {
       const user = auth.currentUser;
       return db.collection('user_simulations').doc(user.uid).collection('scenarios').doc(scenarioId);
@@ -476,17 +481,17 @@
         const snapshot = await db.collection('user_simulations').doc(user.uid).collection('scenarios').get();
         allScenariosMap = {};
         if (snapshot.empty) {
-          // 初期シナリオをFirestoreに書き込み
           await saveCurrentScenario("default", "標準プラン");
         } else {
-          snapshot.forEach(doc => {
-            allScenariosMap[doc.id] = doc.data();
-          });
+          snapshot.forEach(doc => { allScenariosMap[doc.id] = doc.data(); });
         }
         updateScenarioDropdowns();
         loadScenarioData(currentScenarioId);
       } catch (err) {
-        console.error("Firestore error:", err);
+        console.error("Firestore init error:", err);
+        // エラー時もデフォルトデータで即時描画
+        renderAllEditors();
+        calculate();
       }
     }
 
@@ -501,21 +506,19 @@
         const name = item.scenarioName || id;
         
         const opt = document.createElement('option');
-        opt.value = id;
-        opt.innerText = name;
+        opt.value = id; opt.innerText = name;
         if (id === currentScenarioId) opt.selected = true;
         select.appendChild(opt);
 
         const compOpt = document.createElement('option');
-        compOpt.value = id;
-        compOpt.innerText = `比較: ${name}`;
+        compOpt.value = id; compOpt.innerText = `比較: ${name}`;
         compareSelect.appendChild(compOpt);
       });
     }
 
     function getCurrentFormData(name = "") {
       return {
-        scenarioName: name || (allScenariosMap[currentScenarioId] ? allScenariosMap[currentScenarioId].scenarioName : "標準プラン"),
+        scenarioName: name || (allScenariosMap[currentScenarioId]?.scenarioName || "標準プラン"),
         calcYears: document.getElementById('calcYears').value,
         startingSalary: document.getElementById('startingSalary').value,
         bearRate: document.getElementById('bearRate').value,
@@ -540,7 +543,7 @@
       try {
         await getScenarioDocRef(targetId).set(data);
         allScenariosMap[targetId] = data;
-        document.getElementById('syncStatus').innerText = "☁️ 同期完了 (" + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) + ")";
+        document.getElementById('syncStatus').innerText = "☁️ 同期完了 (" + new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) + ")";
         updateScenarioDropdowns();
         alert(`シナリオ「${data.scenarioName}」をクラウドに保存しました！`);
       } catch (e) {
@@ -584,27 +587,32 @@
 
     function loadScenarioData(id) {
       const d = allScenariosMap[id];
-      if (!d) return;
-
-      document.getElementById('printScenarioName').innerText = d.scenarioName || "標準プラン";
-      if (d.calcYears) document.getElementById('calcYears').value = d.calcYears;
-      if (d.startingSalary) document.getElementById('startingSalary').value = d.startingSalary;
-      if (d.bearRate) document.getElementById('bearRate').value = d.bearRate;
-      if (d.toggleAutoBear !== undefined) document.getElementById('toggleAutoBear').checked = d.toggleAutoBear;
-      if (d.toggleAutoSlide !== undefined) document.getElementById('toggleAutoSlide').checked = d.toggleAutoSlide;
-      if (d.bonusMonths) document.getElementById('bonusMonths').value = d.bonusMonths;
-      if (d.safetyCash) document.getElementById('safetyCash').value = d.safetyCash;
-      if (d.inflationRate) document.getElementById('inflationRate').value = d.inflationRate;
-      if (d.nisaBlocks) nisaBlocks = d.nisaBlocks;
-      if (d.salaryMaster) salaryMaster = d.salaryMaster;
-      if (d.phases) phases = d.phases;
-      if (d.customEvents) customEvents = d.customEvents;
-
-      renderNisaBlocks();
-      renderSalaryEditor();
-      renderPhaseList();
-      renderEventList();
+      if (d) {
+        document.getElementById('printScenarioName').innerText = d.scenarioName || "標準プラン";
+        if (d.calcYears) document.getElementById('calcYears').value = d.calcYears;
+        if (d.startingSalary) document.getElementById('startingSalary').value = d.startingSalary;
+        if (d.bearRate) document.getElementById('bearRate').value = d.bearRate;
+        if (d.toggleAutoBear !== undefined) document.getElementById('toggleAutoBear').checked = d.toggleAutoBear;
+        if (d.toggleAutoSlide !== undefined) document.getElementById('toggleAutoSlide').checked = d.toggleAutoSlide;
+        if (d.bonusMonths) document.getElementById('bonusMonths').value = d.bonusMonths;
+        if (d.safetyCash) document.getElementById('safetyCash').value = d.safetyCash;
+        if (d.inflationRate) document.getElementById('inflationRate').value = d.inflationRate;
+        nisaBlocks = d.nisaBlocks ? JSON.parse(JSON.stringify(d.nisaBlocks)) : JSON.parse(JSON.stringify(defaultNisaBlocks));
+        salaryMaster = d.salaryMaster ? JSON.parse(JSON.stringify(d.salaryMaster)) : JSON.parse(JSON.stringify(defaultSalaryMaster));
+        phases = d.phases ? JSON.parse(JSON.stringify(d.phases)) : JSON.parse(JSON.stringify(defaultPhases));
+        customEvents = d.customEvents ? JSON.parse(JSON.stringify(d.customEvents)) : JSON.parse(JSON.stringify(defaultCustomEvents));
+      }
+      renderAllEditors();
       calculate();
+      document.getElementById('syncStatus').innerText = "☁️ 同期完了";
+    }
+
+    function renderAllEditors() {
+      renderSalaryEditor();
+      renderNisaBlocks();
+      renderPhaseList();
+      renderPhaseDetailEditors();
+      renderEventList();
     }
 
     // 初任給連動スライド
@@ -646,6 +654,7 @@
       calculate();
     }
 
+    // 1. NISAブロック
     function renderNisaBlocks() {
       const container = document.getElementById('nisaBlocksContainer');
       container.innerHTML = '';
@@ -669,24 +678,30 @@
     }
     function addNisaBlock() { nisaBlocks.push({ startYear: 1, endYear: 10, monthly: 50000, rate: 5.0 }); renderNisaBlocks(); calculate(); }
 
+    // 2. 年次別昇給テーブル（完全直接編集）
     function renderSalaryEditor() {
       const calcYears = Math.min(40, Math.max(1, Number(document.getElementById('calcYears').value) || 10));
       const tbody = document.getElementById('salaryTableEditorBody');
+      if (!tbody) return;
       tbody.innerHTML = '';
       for (let i = 0; i < calcYears; i++) {
+        if (!salaryMaster[i]) {
+          salaryMaster[i] = { year: i+1, age: 24+i, grade: i>=6 ? "主査" : "一般", baseMonthly: 400000, otHours: 15, hasOt: true };
+        }
         const item = salaryMaster[i];
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td class="p-2 font-medium">${item.year}年目(${item.age}歳)</td>
+          <td class="p-2 font-semibold text-slate-700">${item.year}年目(${item.age}歳)</td>
           <td class="p-1"><input type="text" value="${item.grade}" class="w-full p-1 border rounded text-xs" onchange="salaryMaster[${i}].grade=this.value;calculate();"></td>
-          <td class="p-1"><input type="number" step="1000" value="${item.baseMonthly}" class="w-full p-1 border rounded text-xs text-right font-semibold" onchange="salaryMaster[${i}].baseMonthly=Number(this.value);calculate();"></td>
+          <td class="p-1"><input type="number" step="1000" value="${item.baseMonthly}" class="w-full p-1 border rounded text-xs text-right font-semibold text-blue-700" onchange="salaryMaster[${i}].baseMonthly=Number(this.value);calculate();"></td>
           <td class="p-1"><input type="number" value="${item.otHours}" class="w-full p-1 border rounded text-xs text-center" onchange="salaryMaster[${i}].otHours=Number(this.value);calculate();"></td>
-          <td class="p-1 text-center"><input type="checkbox" ${item.hasOt ? 'checked' : ''} onchange="salaryMaster[${i}].hasOt=this.checked;calculate();"></td>
+          <td class="p-1 text-center"><input type="checkbox" ${item.hasOt ? 'checked' : ''} onchange="salaryMaster[${i}].hasOt=this.checked;calculate();" class="w-4 h-4 text-blue-600 rounded"></td>
         `;
         tbody.appendChild(tr);
       }
     }
 
+    // 3. フェーズ管理
     function renderPhaseList() {
       const container = document.getElementById('phaseListContainer');
       container.innerHTML = '';
@@ -694,19 +709,29 @@
         const div = document.createElement('div');
         div.className = "bg-slate-50 p-2 rounded border text-xs flex items-center justify-between gap-1";
         div.innerHTML = `
-          <button onclick="if(${idx}>0){const t=phases[${idx}];phases[${idx}]=phases[${idx}-1];phases[${idx}-1]=t;renderPhaseList();calculate();}" class="px-1 py-0.5 border bg-white rounded font-bold" ${idx===0?'disabled style="opacity:0.3"':''}>↑</button>
-          <button onclick="if(${idx}<phases.length-1){const t=phases[${idx}];phases[${idx}]=phases[${idx}+1];phases[${idx}+1]=t;renderPhaseList();calculate();}" class="px-1 py-0.5 border bg-white rounded font-bold" ${idx===phases.length-1?'disabled style="opacity:0.3"':''}>↓</button>
+          <button onclick="if(${idx}>0){const t=phases[${idx}];phases[${idx}]=phases[${idx}-1];phases[${idx}-1]=t;renderPhaseList();renderPhaseDetailEditors();calculate();}" class="px-1 py-0.5 border bg-white rounded font-bold" ${idx===0?'disabled style="opacity:0.3"':''}>↑</button>
+          <button onclick="if(${idx}<phases.length-1){const t=phases[${idx}];phases[${idx}]=phases[${idx}+1];phases[${idx}+1]=t;renderPhaseList();renderPhaseDetailEditors();calculate();}" class="px-1 py-0.5 border bg-white rounded font-bold" ${idx===phases.length-1?'disabled style="opacity:0.3"':''}>↓</button>
           <input type="text" value="${p.name}" class="p-1 border rounded flex-1 min-w-[90px] font-semibold" onchange="phases[${idx}].name=this.value;renderPhaseDetailEditors();calculate();">
           <input type="number" value="${p.startYear}" class="w-10 p-1 border rounded text-center" onchange="phases[${idx}].startYear=Number(this.value);calculate();">
           <span>〜</span>
           <input type="number" value="${p.endYear}" class="w-10 p-1 border rounded text-center" onchange="phases[${idx}].endYear=Number(this.value);calculate();">
-          <button onclick="phases.splice(${idx},1);renderPhaseList();calculate();" class="text-rose-500 font-bold px-1">×</button>
+          <button onclick="phases.splice(${idx},1);renderPhaseList();renderPhaseDetailEditors();calculate();" class="text-rose-500 font-bold px-1">×</button>
         `;
         container.appendChild(div);
       });
-      renderPhaseDetailEditors();
     }
-    function addPhase() { phases.push({ name: "新フェーズ", startYear: 1, endYear: 10, items: [] }); renderPhaseList(); calculate(); }
+
+    function addPhase() {
+      const calcY = Number(document.getElementById('calcYears').value) || 10;
+      phases.push({
+        name: `フェーズ${phases.length}：新規フェーズ`,
+        startYear: 1, endYear: calcY,
+        items: [{ name: "基本生活費", amount: 120000, type: "monthly" }]
+      });
+      renderPhaseList();
+      renderPhaseDetailEditors();
+      calculate();
+    }
 
     function renderPhaseDetailEditors() {
       const container = document.getElementById('phaseDetailEditors');
@@ -732,8 +757,8 @@
         }
         div.innerHTML = `
           <div class="flex justify-between items-center border-b pb-1 font-bold">
-            <span>${p.name}</span>
-            <button onclick="phases[${pIdx}].items.push({name:'新規',amount:10000,type:'monthly'});renderPhaseDetailEditors();calculate();" class="text-[10px] bg-blue-600 text-white px-1.5 py-0.5 rounded">+ 項目</button>
+            <span class="truncate max-w-[140px]">${p.name}</span>
+            <button onclick="phases[${pIdx}].items.push({name:'新規支出',amount:10000,type:'monthly'});renderPhaseDetailEditors();calculate();" class="text-[10px] bg-blue-600 text-white px-1.5 py-0.5 rounded font-semibold">+ 項目</button>
           </div>
           <div class="space-y-1 mt-1">${itemsHtml}</div>
         `;
@@ -741,6 +766,7 @@
       });
     }
 
+    // 4. 特別支出
     function renderEventList() {
       const container = document.getElementById('eventListContainer');
       container.innerHTML = '';
@@ -761,7 +787,6 @@
 
     let assetChart = null, cfChart = null, ratioChart = null, pieChart = null;
 
-    // シミュレーション計算ロジック（単一シナリオ評価用）
     function runSimCalculation(customSalary, customPhases, customEventsList, customNisa, calcY, bonusM, bRate, isBear, inflRate) {
       let cash = 0, nisa = 0;
       const totalArr = [], cashArr = [], nisaArr = [], incArr = [], expArr = [];
@@ -848,7 +873,6 @@
       const bearRate = (Number(document.getElementById('bearRate').value) || 0) / 100;
       const isAutoBear = document.getElementById('toggleAutoBear').checked;
 
-      // 現在のシナリオ計算
       const curRes = runSimCalculation(salaryMaster, phases, customEvents, nisaBlocks, calcYears, bonusMonths, bearRate, isAutoBear, inflation);
 
       const labels = [];
@@ -894,7 +918,6 @@
         astTbody.innerHTML += `<tr><td class="p-1.5">${item.year}年目(${item.age}歳)</td><td class="p-1.5 font-semibold ${netF>=0?'text-blue-600':'text-rose-600'}">${netF>=0?'+':''}¥${netF.toLocaleString()}</td><td class="p-1.5 font-bold ${curCash<safetyLimit?'text-rose-600 bg-rose-50':'text-emerald-700'}">¥${curCash.toLocaleString()}</td><td class="p-1.5 font-bold text-indigo-700">¥${curRes.nisaArr[i].toLocaleString()}</td><td class="p-1.5 font-bold text-blue-800">¥${curRes.totalArr[i].toLocaleString()}</td></tr>`;
       }
 
-      // KPI更新
       document.getElementById('kpiFinalAsset').innerText = '¥' + (curRes.totalArr[curRes.totalArr.length-1]/10000).toLocaleString() + '万円';
       document.getElementById('kpiFinalNisa').innerText = '¥' + (curRes.nisaArr[curRes.nisaArr.length-1]/10000).toLocaleString() + '万円';
       document.getElementById('kpiMinCash').innerText = '¥' + (curRes.minC/10000).toLocaleString() + '万円';
@@ -917,7 +940,6 @@
         <div><strong>防衛資金:</strong> ¥${safetyLimit/10000}万円</div>
       `;
 
-      // 比較シナリオの計算（選択されている場合）
       const compareId = document.getElementById('compareScenarioSelect').value;
       let compareDatasets = [];
       if (compareId !== "none" && allScenariosMap[compareId]) {
@@ -939,7 +961,6 @@
         ];
       }
 
-      // チャート1: 資産推移
       if (assetChart) assetChart.destroy();
       assetChart = new Chart(document.getElementById('assetChart').getContext('2d'), {
         type: 'line',
@@ -955,7 +976,6 @@
         options: { responsive: true, maintainAspectRatio: false, scales: { y: { ticks: { callback: v => '¥' + (v/10000).toLocaleString() + '万' } } } }
       });
 
-      // チャート2: 収支
       if (cfChart) cfChart.destroy();
       cfChart = new Chart(document.getElementById('cashflowChart').getContext('2d'), {
         type: 'bar',
@@ -969,7 +989,6 @@
         options: { responsive: true, maintainAspectRatio: false, scales: { y: { ticks: { callback: v => '¥' + (v/10000).toLocaleString() + '万' } } } }
       });
 
-      // チャート3: 使途割合
       if (ratioChart) ratioChart.destroy();
       ratioChart = new Chart(document.getElementById('ratioChart').getContext('2d'), {
         type: 'bar',
@@ -985,7 +1004,6 @@
         options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true, max: 100 } } }
       });
 
-      // チャート4: 累計パイ
       if (pieChart) pieChart.destroy();
       pieChart = new Chart(document.getElementById('pieChart').getContext('2d'), {
         type: 'doughnut',
@@ -996,6 +1014,12 @@
         options: { responsive: true, maintainAspectRatio: false }
       });
     }
+
+    // 初回起動時のフォールバック実行
+    window.addEventListener('DOMContentLoaded', () => {
+      renderAllEditors();
+      calculate();
+    });
   </script>
 </body>
 </html>
