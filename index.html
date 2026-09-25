@@ -367,6 +367,9 @@
         if (user.email === "naochun21@gmail.com") {
           document.getElementById('authScreen').classList.add('hidden');
           document.getElementById('appScreen').classList.remove('hidden');
+          // 画面表示と同時に即座にレンダリング＆計算を実行
+          renderAllEditors();
+          calculate();
           initScenarioManager();
         } else {
           alert("アクセス権限のないアカウントです: " + user.email);
@@ -382,7 +385,6 @@
     let currentScenarioId = "default";
     let allScenariosMap = {};
 
-    // デフォルト・初期マスタデータ
     const defaultNisaBlocks = [
       { startYear: 1, endYear: 2, monthly: 50000, rate: 5.0 },
       { startYear: 3, endYear: 10, monthly: 100000, rate: 5.0 }
@@ -489,15 +491,14 @@
         loadScenarioData(currentScenarioId);
       } catch (err) {
         console.error("Firestore init error:", err);
-        // エラー時もデフォルトデータで即時描画
-        renderAllEditors();
-        calculate();
+        document.getElementById('syncStatus').innerText = "☁️ オフライン同期";
       }
     }
 
     function updateScenarioDropdowns() {
       const select = document.getElementById('scenarioSelect');
       const compareSelect = document.getElementById('compareScenarioSelect');
+      if (!select || !compareSelect) return;
       select.innerHTML = '';
       compareSelect.innerHTML = '<option value="none">重畳なし (単一表示)</option>';
 
@@ -615,7 +616,6 @@
       renderEventList();
     }
 
-    // 初任給連動スライド
     let prevStartingSalary = 340000;
     function onStartingSalaryChange() {
       const isAuto = document.getElementById('toggleAutoSlide').checked;
@@ -654,9 +654,9 @@
       calculate();
     }
 
-    // 1. NISAブロック
     function renderNisaBlocks() {
       const container = document.getElementById('nisaBlocksContainer');
+      if (!container) return;
       container.innerHTML = '';
       nisaBlocks.forEach((b, idx) => {
         const div = document.createElement('div');
@@ -678,7 +678,6 @@
     }
     function addNisaBlock() { nisaBlocks.push({ startYear: 1, endYear: 10, monthly: 50000, rate: 5.0 }); renderNisaBlocks(); calculate(); }
 
-    // 2. 年次別昇給テーブル（完全直接編集）
     function renderSalaryEditor() {
       const calcYears = Math.min(40, Math.max(1, Number(document.getElementById('calcYears').value) || 10));
       const tbody = document.getElementById('salaryTableEditorBody');
@@ -701,9 +700,9 @@
       }
     }
 
-    // 3. フェーズ管理
     function renderPhaseList() {
       const container = document.getElementById('phaseListContainer');
+      if (!container) return;
       container.innerHTML = '';
       phases.forEach((p, idx) => {
         const div = document.createElement('div');
@@ -735,6 +734,7 @@
 
     function renderPhaseDetailEditors() {
       const container = document.getElementById('phaseDetailEditors');
+      if (!container) return;
       container.innerHTML = '';
       phases.forEach((p, pIdx) => {
         const div = document.createElement('div');
@@ -766,9 +766,9 @@
       });
     }
 
-    // 4. 特別支出
     function renderEventList() {
       const container = document.getElementById('eventListContainer');
+      if (!container) return;
       container.innerHTML = '';
       customEvents.forEach((ev, idx) => {
         const div = document.createElement('div');
@@ -795,14 +795,14 @@
       let sLiv = 0, sNis = 0, sSpe = 0;
 
       for (let i = 0; i < calcY; i++) {
-        const item = customSalary[i] || { year: i+1, age: 24+i, grade: "主査", baseMonthly: 590000, otHours: 0, hasOt: false };
+        const item = (customSalary && customSalary[i]) ? customSalary[i] : { year: i+1, age: 24+i, grade: "主査", baseMonthly: 590000, otHours: 0, hasOt: false };
         const dFactor = isRealValueMode ? Math.pow(1 + inflRate, -i) : 1.0;
 
-        let baseM = item.baseMonthly;
+        let baseM = Number(item.baseMonthly) || 0;
         if (isBear) baseM = baseM * Math.pow(1 + bRate, i);
 
         const otRate = (baseM / 160) * 1.25;
-        const otM = item.hasOt ? otRate * item.otHours : 0;
+        const otM = item.hasOt ? otRate * (Number(item.otHours) || 0) : 0;
         let bonM = baseM * bonusM;
         if (i === 0) bonM = baseM * 3.0;
 
@@ -811,24 +811,30 @@
         totEarned += takeHome;
 
         let annualLiving = 0;
-        for (let p of customPhases) {
-          if (item.year >= p.startYear && item.year <= p.endYear) {
-            if (p.items) {
-              p.items.forEach(it => { annualLiving += it.type === 'monthly' ? it.amount * 12 : it.amount; });
+        if (customPhases) {
+          for (let p of customPhases) {
+            if (item.year >= p.startYear && item.year <= p.endYear) {
+              if (p.items) {
+                p.items.forEach(it => { annualLiving += it.type === 'monthly' ? (Number(it.amount)||0) * 12 : (Number(it.amount)||0); });
+              }
+              break;
             }
-            break;
           }
         }
 
         let specialTotal = 0;
-        customEventsList.forEach(ev => {
-          if (ev.year === item.year) specialTotal += ev.amount;
-        });
+        if (customEventsList) {
+          customEventsList.forEach(ev => {
+            if (ev.year === item.year) specialTotal += (Number(ev.amount)||0);
+          });
+        }
 
         let nisaMonth = 0, nisaRate = 0.05;
-        for (let b of customNisa) {
-          if (item.year >= b.startYear && item.year <= b.endYear) {
-            nisaMonth = b.monthly; nisaRate = b.rate / 100; break;
+        if (customNisa) {
+          for (let b of customNisa) {
+            if (item.year >= b.startYear && item.year <= b.endYear) {
+              nisaMonth = Number(b.monthly) || 0; nisaRate = (Number(b.rate) || 5.0) / 100; break;
+            }
           }
         }
         const nisaYear = nisaMonth * 12;
@@ -851,10 +857,11 @@
         incArr.push(Math.round(takeHome * dFactor));
         expArr.push(Math.round(totalExpense * dFactor));
 
-        rLiving.push(((annualLiving / takeHome) * 100).toFixed(1));
-        rNisa.push(((nisaYear / takeHome) * 100).toFixed(1));
-        rSpecial.push(((specialTotal / takeHome) * 100).toFixed(1));
-        rSavings.push((Math.max(0, netFlow / takeHome) * 100).toFixed(1));
+        const th = takeHome > 0 ? takeHome : 1;
+        rLiving.push(((annualLiving / th) * 100).toFixed(1));
+        rNisa.push(((nisaYear / th) * 100).toFixed(1));
+        rSpecial.push(((specialTotal / th) * 100).toFixed(1));
+        rSavings.push((Math.max(0, netFlow / th) * 100).toFixed(1));
       }
 
       return {
@@ -866,12 +873,12 @@
     }
 
     function calculate() {
-      const calcYears = Math.min(40, Math.max(1, Number(document.getElementById('calcYears').value) || 10));
-      const bonusMonths = Number(document.getElementById('bonusMonths').value) || 6.0;
-      const safetyLimit = (Number(document.getElementById('safetyCash').value) || 100) * 10000;
-      const inflation = (Number(document.getElementById('inflationRate').value) || 1.0) / 100;
-      const bearRate = (Number(document.getElementById('bearRate').value) || 0) / 100;
-      const isAutoBear = document.getElementById('toggleAutoBear').checked;
+      const calcYears = Math.min(40, Math.max(1, Number(document.getElementById('calcYears')?.value) || 10));
+      const bonusMonths = Number(document.getElementById('bonusMonths')?.value) || 6.0;
+      const safetyLimit = (Number(document.getElementById('safetyCash')?.value) || 100) * 10000;
+      const inflation = (Number(document.getElementById('inflationRate')?.value) || 1.0) / 100;
+      const bearRate = (Number(document.getElementById('bearRate')?.value) || 0) / 100;
+      const isAutoBear = document.getElementById('toggleAutoBear')?.checked || false;
 
       const curRes = runSimCalculation(salaryMaster, phases, customEvents, nisaBlocks, calcYears, bonusMonths, bearRate, isAutoBear, inflation);
 
@@ -879,7 +886,9 @@
       const incTbody = document.getElementById('incomeTableBody');
       const expTbody = document.getElementById('expenseTableBody');
       const astTbody = document.getElementById('assetTableBody');
-      incTbody.innerHTML = ''; expTbody.innerHTML = ''; astTbody.innerHTML = '';
+      if (incTbody) incTbody.innerHTML = '';
+      if (expTbody) expTbody.innerHTML = '';
+      if (astTbody) astTbody.innerHTML = '';
 
       let safetyAlertYears = [];
 
@@ -888,9 +897,9 @@
         labels.push(`${item.year}年目(${item.age}歳)`);
 
         const dFactor = isRealValueMode ? Math.pow(1 + inflation, -i) : 1.0;
-        let baseM = item.baseMonthly;
+        let baseM = Number(item.baseMonthly) || 0;
         if (isAutoBear) baseM = baseM * Math.pow(1 + bearRate, i);
-        const otM = item.hasOt ? (baseM / 160) * 1.25 * item.otHours : 0;
+        const otM = item.hasOt ? (baseM / 160) * 1.25 * (Number(item.otHours) || 0) : 0;
         let bonM = baseM * bonusMonths; if (i === 0) bonM = baseM * 3.0;
         const gross = (baseM * 12) + (otM * 12) + bonM;
 
@@ -898,14 +907,14 @@
         for (let p of phases) {
           if (item.year >= p.startYear && item.year <= p.endYear) {
             matchedPhase = p.name;
-            if (p.items) p.items.forEach(it => { annLiv += it.type === 'monthly' ? it.amount * 12 : it.amount; });
+            if (p.items) p.items.forEach(it => { annLiv += it.type === 'monthly' ? (Number(it.amount)||0) * 12 : (Number(it.amount)||0); });
             break;
           }
         }
 
         let speDesc = [];
         customEvents.forEach(ev => {
-          if (ev.year === item.year) speDesc.push(`${ev.name}:¥${(ev.amount/10000).toLocaleString()}万`);
+          if (ev.year === item.year) speDesc.push(`${ev.name}:¥${((Number(ev.amount)||0)/10000).toLocaleString()}万`);
         });
 
         const curCash = curRes.cashArr[i];
@@ -913,34 +922,36 @@
 
         const netF = curRes.incArr[i] - curRes.expArr[i];
 
-        incTbody.innerHTML += `<tr><td class="p-1.5">${item.year}年目(${item.age}歳)</td><td class="p-1.5">${item.grade}</td><td class="p-1.5">¥${Math.round(baseM*dFactor).toLocaleString()}</td><td class="p-1.5">${item.hasOt ? '¥'+Math.round(otM*dFactor).toLocaleString() : '-'}</td><td class="p-1.5">¥${Math.round(bonM*dFactor).toLocaleString()}</td><td class="p-1.5 font-semibold">¥${Math.round(gross*dFactor).toLocaleString()}</td><td class="p-1.5 font-bold text-blue-800">¥${curRes.incArr[i].toLocaleString()}</td></tr>`;
-        expTbody.innerHTML += `<tr><td class="p-1.5">${item.year}年目(${item.age}歳)</td><td class="p-1.5 text-emerald-700">${matchedPhase}</td><td class="p-1.5">¥${Math.round(annLiv*dFactor).toLocaleString()}</td><td class="p-1.5">¥${(curRes.expArr[i] - Math.round(annLiv*dFactor) - (speDesc.length ? 0 : 0)).toLocaleString()}</td><td class="p-1.5 text-rose-600">${speDesc.length ? speDesc.join(', ') : '-'}</td><td class="p-1.5 font-bold text-emerald-900">¥${curRes.expArr[i].toLocaleString()}</td></tr>`;
-        astTbody.innerHTML += `<tr><td class="p-1.5">${item.year}年目(${item.age}歳)</td><td class="p-1.5 font-semibold ${netF>=0?'text-blue-600':'text-rose-600'}">${netF>=0?'+':''}¥${netF.toLocaleString()}</td><td class="p-1.5 font-bold ${curCash<safetyLimit?'text-rose-600 bg-rose-50':'text-emerald-700'}">¥${curCash.toLocaleString()}</td><td class="p-1.5 font-bold text-indigo-700">¥${curRes.nisaArr[i].toLocaleString()}</td><td class="p-1.5 font-bold text-blue-800">¥${curRes.totalArr[i].toLocaleString()}</td></tr>`;
+        if (incTbody) incTbody.innerHTML += `<tr><td class="p-1.5">${item.year}年目(${item.age}歳)</td><td class="p-1.5">${item.grade}</td><td class="p-1.5">¥${Math.round(baseM*dFactor).toLocaleString()}</td><td class="p-1.5">${item.hasOt ? '¥'+Math.round(otM*dFactor).toLocaleString() : '-'}</td><td class="p-1.5">¥${Math.round(bonM*dFactor).toLocaleString()}</td><td class="p-1.5 font-semibold">¥${Math.round(gross*dFactor).toLocaleString()}</td><td class="p-1.5 font-bold text-blue-800">¥${curRes.incArr[i].toLocaleString()}</td></tr>`;
+        if (expTbody) expTbody.innerHTML += `<tr><td class="p-1.5">${item.year}年目(${item.age}歳)</td><td class="p-1.5 text-emerald-700">${matchedPhase}</td><td class="p-1.5">¥${Math.round(annLiv*dFactor).toLocaleString()}</td><td class="p-1.5">¥${(curRes.expArr[i] - Math.round(annLiv*dFactor)).toLocaleString()}</td><td class="p-1.5 text-rose-600">${speDesc.length ? speDesc.join(', ') : '-'}</td><td class="p-1.5 font-bold text-emerald-900">¥${curRes.expArr[i].toLocaleString()}</td></tr>`;
+        if (astTbody) astTbody.innerHTML += `<tr><td class="p-1.5">${item.year}年目(${item.age}歳)</td><td class="p-1.5 font-semibold ${netF>=0?'text-blue-600':'text-rose-600'}">${netF>=0?'+':''}¥${netF.toLocaleString()}</td><td class="p-1.5 font-bold ${curCash<safetyLimit?'text-rose-600 bg-rose-50':'text-emerald-700'}">¥${curCash.toLocaleString()}</td><td class="p-1.5 font-bold text-indigo-700">¥${curRes.nisaArr[i].toLocaleString()}</td><td class="p-1.5 font-bold text-blue-800">¥${curRes.totalArr[i].toLocaleString()}</td></tr>`;
       }
 
-      document.getElementById('kpiFinalAsset').innerText = '¥' + (curRes.totalArr[curRes.totalArr.length-1]/10000).toLocaleString() + '万円';
-      document.getElementById('kpiFinalNisa').innerText = '¥' + (curRes.nisaArr[curRes.nisaArr.length-1]/10000).toLocaleString() + '万円';
-      document.getElementById('kpiMinCash').innerText = '¥' + (curRes.minC/10000).toLocaleString() + '万円';
-      document.getElementById('kpiMinCashYear').innerText = `到達: ${curRes.minCYear}年目時点`;
-      document.getElementById('kpiTotalFlow').innerText = `手取: ¥${Math.round(curRes.totEarned/10000).toLocaleString()}万 / 支出: ¥${Math.round(curRes.totSpent/10000).toLocaleString()}万`;
+      const elFinalAsset = document.getElementById('kpiFinalAsset');
+      if (elFinalAsset) elFinalAsset.innerText = '¥' + (curRes.totalArr[curRes.totalArr.length-1]/10000).toLocaleString() + '万円';
+      const elFinalNisa = document.getElementById('kpiFinalNisa');
+      if (elFinalNisa) elFinalNisa.innerText = '¥' + (curRes.nisaArr[curRes.nisaArr.length-1]/10000).toLocaleString() + '万円';
+      const elMinCash = document.getElementById('kpiMinCash');
+      if (elMinCash) elMinCash.innerText = '¥' + (curRes.minC/10000).toLocaleString() + '万円';
+      const elMinCashYear = document.getElementById('kpiMinCashYear');
+      if (elMinCashYear) elMinCashYear.innerText = `到達: ${curRes.minCYear}年目時点`;
+      const elTotalFlow = document.getElementById('kpiTotalFlow');
+      if (elTotalFlow) elTotalFlow.innerText = `手取: ¥${Math.round(curRes.totEarned/10000).toLocaleString()}万 / 支出: ¥${Math.round(curRes.totSpent/10000).toLocaleString()}万`;
 
       const alertEl = document.getElementById('safetyAlertBanner');
-      if (safetyAlertYears.length > 0) {
-        alertEl.classList.remove('hidden');
-        document.getElementById('safetyAlertText').innerText = `【生活防衛資金アラート】以下の年次に防衛資金（¥${safetyLimit/10000}万）を下回ります: ${safetyAlertYears.join(', ')}`;
-      } else {
-        alertEl.classList.add('hidden');
+      if (alertEl) {
+        if (safetyAlertYears.length > 0) {
+          alertEl.classList.remove('hidden');
+          document.getElementById('safetyAlertText').innerText = `【生活防衛資金アラート】以下の年次に防衛資金（¥${safetyLimit/10000}万）を下回ります: ${safetyAlertYears.join(', ')}`;
+        } else {
+          alertEl.classList.add('hidden');
+        }
       }
 
-      document.getElementById('printDate').innerText = new Date().toLocaleDateString('ja-JP');
-      document.getElementById('printConditionSummary').innerHTML = `
-        <div><strong>計算年数:</strong> ${calcYears}年</div>
-        <div><strong>初任給:</strong> ¥${Number(document.getElementById('startingSalary').value).toLocaleString()}</div>
-        <div><strong>ベア率:</strong> ${isAutoBear ? (bearRate*100).toFixed(1)+'%/年' : '無効'}</div>
-        <div><strong>防衛資金:</strong> ¥${safetyLimit/10000}万円</div>
-      `;
+      const pDate = document.getElementById('printDate');
+      if (pDate) pDate.innerText = new Date().toLocaleDateString('ja-JP');
 
-      const compareId = document.getElementById('compareScenarioSelect').value;
+      const compareId = document.getElementById('compareScenarioSelect')?.value || "none";
       let compareDatasets = [];
       if (compareId !== "none" && allScenariosMap[compareId]) {
         const cData = allScenariosMap[compareId];
@@ -961,61 +972,74 @@
         ];
       }
 
-      if (assetChart) assetChart.destroy();
-      assetChart = new Chart(document.getElementById('assetChart').getContext('2d'), {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: [
-            { label: '総純資産', data: curRes.totalArr, borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.08)', fill: true, tension: 0.2 },
-            { label: '新NISA残高', data: curRes.nisaArr, borderColor: '#4f46e5', borderDash: [4, 4], fill: false },
-            { label: '手元普通預金', data: curRes.cashArr, borderColor: '#059669', fill: false },
-            ...compareDatasets
-          ]
-        },
-        options: { responsive: true, maintainAspectRatio: false, scales: { y: { ticks: { callback: v => '¥' + (v/10000).toLocaleString() + '万' } } } }
-      });
+      // チャート描画
+      const canvasAsset = document.getElementById('assetChart');
+      if (canvasAsset) {
+        if (assetChart) assetChart.destroy();
+        assetChart = new Chart(canvasAsset.getContext('2d'), {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              { label: '総純資産', data: curRes.totalArr, borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.08)', fill: true, tension: 0.2 },
+              { label: '新NISA残高', data: curRes.nisaArr, borderColor: '#4f46e5', borderDash: [4, 4], fill: false },
+              { label: '手元普通預金', data: curRes.cashArr, borderColor: '#059669', fill: false },
+              ...compareDatasets
+            ]
+          },
+          options: { responsive: true, maintainAspectRatio: false, scales: { y: { ticks: { callback: v => '¥' + (v/10000).toLocaleString() + '万' } } } }
+        });
+      }
 
-      if (cfChart) cfChart.destroy();
-      cfChart = new Chart(document.getElementById('cashflowChart').getContext('2d'), {
-        type: 'bar',
-        data: {
-          labels: labels,
-          datasets: [
-            { label: '手取り収入', data: curRes.incArr, backgroundColor: '#3b82f6' },
-            { label: '年間総支出', data: curRes.expArr, backgroundColor: '#f43f5e' }
-          ]
-        },
-        options: { responsive: true, maintainAspectRatio: false, scales: { y: { ticks: { callback: v => '¥' + (v/10000).toLocaleString() + '万' } } } }
-      });
+      const canvasCf = document.getElementById('cashflowChart');
+      if (canvasCf) {
+        if (cfChart) cfChart.destroy();
+        cfChart = new Chart(canvasCf.getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [
+              { label: '手取り収入', data: curRes.incArr, backgroundColor: '#3b82f6' },
+              { label: '年間総支出', data: curRes.expArr, backgroundColor: '#f43f5e' }
+            ]
+          },
+          options: { responsive: true, maintainAspectRatio: false, scales: { y: { ticks: { callback: v => '¥' + (v/10000).toLocaleString() + '万' } } } }
+        });
+      }
 
-      if (ratioChart) ratioChart.destroy();
-      ratioChart = new Chart(document.getElementById('ratioChart').getContext('2d'), {
-        type: 'bar',
-        data: {
-          labels: labels,
-          datasets: [
-            { label: '生活費%', data: curRes.rLiving, backgroundColor: '#10b981' },
-            { label: 'NISA投資%', data: curRes.rNisa, backgroundColor: '#6366f1' },
-            { label: '特別支出%', data: curRes.rSpecial, backgroundColor: '#f43f5e' },
-            { label: '純預金増加%', data: curRes.rSavings, backgroundColor: '#3b82f6' }
-          ]
-        },
-        options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true, max: 100 } } }
-      });
+      const canvasRatio = document.getElementById('ratioChart');
+      if (canvasRatio) {
+        if (ratioChart) ratioChart.destroy();
+        ratioChart = new Chart(canvasRatio.getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [
+              { label: '生活費%', data: curRes.rLiving, backgroundColor: '#10b981' },
+              { label: 'NISA投資%', data: curRes.rNisa, backgroundColor: '#6366f1' },
+              { label: '特別支出%', data: curRes.rSpecial, backgroundColor: '#f43f5e' },
+              { label: '純預金増加%', data: curRes.rSavings, backgroundColor: '#3b82f6' }
+            ]
+          },
+          options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true, max: 100 } } }
+        });
+      }
 
-      if (pieChart) pieChart.destroy();
-      pieChart = new Chart(document.getElementById('pieChart').getContext('2d'), {
-        type: 'doughnut',
-        data: {
-          labels: ['生活費計', 'NISA投資計', '特別支出計'],
-          datasets: [{ data: [curRes.sLiv, curRes.sNis, curRes.sSpe], backgroundColor: ['#10b981', '#6366f1', '#f43f5e'] }]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-      });
+      const canvasPie = document.getElementById('pieChart');
+      if (canvasPie) {
+        if (pieChart) pieChart.destroy();
+        pieChart = new Chart(canvasPie.getContext('2d'), {
+          type: 'doughnut',
+          data: {
+            labels: ['生活費計', 'NISA投資計', '特別支出計'],
+            datasets: [{ data: [curRes.sLiv, curRes.sNis, curRes.sSpe], backgroundColor: ['#10b981', '#6366f1', '#f43f5e'] }]
+          },
+          options: { responsive: true, maintainAspectRatio: false }
+        });
+      }
     }
 
-    // 初回起動時のフォールバック実行
+    // 初回ロード保証
     window.addEventListener('DOMContentLoaded', () => {
       renderAllEditors();
       calculate();
