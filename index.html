@@ -25,6 +25,7 @@
       th, td { padding: 3px 5px !important; }
     }
     .print-only { display: none; }
+    .chart-container { position: relative; height: 260px; width: 100%; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 p-3 md:p-6 font-sans">
@@ -142,19 +143,19 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 card bg-white p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 avoid-break">
       <div>
         <h3 class="font-bold text-xs md:text-sm mb-2 text-slate-800">■ 資産推移（純資産・現金・NISA・比較）</h3>
-        <div class="h-60"><canvas id="assetChart"></canvas></div>
+        <div class="chart-container"><canvas id="assetChart"></canvas></div>
       </div>
       <div>
         <h3 class="font-bold text-xs md:text-sm mb-2 text-slate-800">■ 年間収支（手取り収入 vs 年間総支出）</h3>
-        <div class="h-60"><canvas id="cashflowChart"></canvas></div>
+        <div class="chart-container"><canvas id="cashflowChart"></canvas></div>
       </div>
       <div>
         <h3 class="font-bold text-xs md:text-sm mb-2 text-slate-800">■ 手取り収入の使途バランス割合推移 (%)</h3>
-        <div class="h-60"><canvas id="ratioChart"></canvas></div>
+        <div class="chart-container"><canvas id="ratioChart"></canvas></div>
       </div>
       <div>
         <h3 class="font-bold text-xs md:text-sm mb-2 text-slate-800">■ 期間累計・支出用途別シェア</h3>
-        <div class="h-60 flex items-center justify-center"><canvas id="pieChart"></canvas></div>
+        <div class="chart-container flex items-center justify-center"><canvas id="pieChart"></canvas></div>
       </div>
     </div>
 
@@ -364,7 +365,8 @@
     auth.onAuthStateChanged(user => {
       if (user) {
         document.getElementById('authScreen').classList.add('hidden');
-        document.getElementById('appScreen').classList.remove('hidden');
+        const app = document.getElementById('appScreen');
+        app.classList.remove('hidden');
         renderAllEditors();
         calculate();
         initScenarioManager();
@@ -485,7 +487,7 @@
         }
         document.getElementById('syncStatus').innerText = "☁️ 同期完了";
       } catch (err) {
-        console.warn("Firestore access error:", err);
+        console.warn("Firestore error:", err);
         document.getElementById('syncStatus').innerText = "☁️ ローカル動作中";
         allScenariosMap["default"] = getCurrentFormData("標準プラン");
         updateScenarioDropdowns();
@@ -545,7 +547,7 @@
         updateScenarioDropdowns();
         alert(`シナリオ「${data.scenarioName}」をクラウドに保存しました！`);
       } catch (e) {
-        alert("クラウド保存に失敗しました: " + e.message);
+        alert("保存に失敗しました: " + e.message);
         allScenariosMap[targetId] = data;
         updateScenarioDropdowns();
         document.getElementById('syncStatus').innerText = "⚠️ 保存失敗(ローカル保存)";
@@ -569,9 +571,7 @@
 
       try {
         await getScenarioDocRef(currentScenarioId).delete();
-      } catch (e) {
-        console.warn(e);
-      }
+      } catch (e) {}
       delete allScenariosMap[currentScenarioId];
       currentScenarioId = Object.keys(allScenariosMap)[0];
       updateScenarioDropdowns();
@@ -913,10 +913,23 @@
           }
         }
 
+        let speTotal = 0;
         let speDesc = [];
         customEvents.forEach(ev => {
-          if (ev.year === item.year) speDesc.push(`${ev.name}:¥${((Number(ev.amount)||0)/10000).toLocaleString()}万`);
+          if (ev.year === item.year) {
+            speTotal += Number(ev.amount) || 0;
+            speDesc.push(`${ev.name}:¥${((Number(ev.amount)||0)/10000).toLocaleString()}万`);
+          }
         });
+
+        let curNisaMonth = 0;
+        for (let b of nisaBlocks) {
+          if (item.year >= b.startYear && item.year <= b.endYear) {
+            curNisaMonth = Number(b.monthly) || 0;
+            break;
+          }
+        }
+        const curNisaYear = curNisaMonth * 12;
 
         const curCash = curRes.cashArr[i];
         if (curCash < safetyLimit) safetyAlertYears.push(`${item.year}年目(¥${Math.round(curCash/10000)}万)`);
@@ -924,7 +937,7 @@
         const netF = curRes.incArr[i] - curRes.expArr[i];
 
         if (incTbody) incTbody.innerHTML += `<tr><td class="p-1.5">${item.year}年目(${item.age}歳)</td><td class="p-1.5">${item.grade}</td><td class="p-1.5">¥${Math.round(baseM*dFactor).toLocaleString()}</td><td class="p-1.5">${item.hasOt ? '¥'+Math.round(otM*dFactor).toLocaleString() : '-'}</td><td class="p-1.5">¥${Math.round(bonM*dFactor).toLocaleString()}</td><td class="p-1.5 font-semibold">¥${Math.round(gross*dFactor).toLocaleString()}</td><td class="p-1.5 font-bold text-blue-800">¥${curRes.incArr[i].toLocaleString()}</td></tr>`;
-        if (expTbody) expTbody.innerHTML += `<tr><td class="p-1.5">${item.year}年目(${item.age}歳)</td><td class="p-1.5 text-emerald-700">${matchedPhase}</td><td class="p-1.5">¥${Math.round(annLiv*dFactor).toLocaleString()}</td><td class="p-1.5">¥${(curRes.expArr[i] - Math.round(annLiv*dFactor)).toLocaleString()}</td><td class="p-1.5 text-rose-600">${speDesc.length ? speDesc.join(', ') : '-'}</td><td class="p-1.5 font-bold text-emerald-900">¥${curRes.expArr[i].toLocaleString()}</td></tr>`;
+        if (expTbody) expTbody.innerHTML += `<tr><td class="p-1.5">${item.year}年目(${item.age}歳)</td><td class="p-1.5 text-emerald-700">${matchedPhase}</td><td class="p-1.5">¥${Math.round(annLiv*dFactor).toLocaleString()}</td><td class="p-1.5">¥${Math.round(curNisaYear*dFactor).toLocaleString()}</td><td class="p-1.5 text-rose-600">${speDesc.length ? speDesc.join(', ') : '-'}</td><td class="p-1.5 font-bold text-emerald-900">¥${curRes.expArr[i].toLocaleString()}</td></tr>`;
         if (astTbody) astTbody.innerHTML += `<tr><td class="p-1.5">${item.year}年目(${item.age}歳)</td><td class="p-1.5 font-semibold ${netF>=0?'text-blue-600':'text-rose-600'}">${netF>=0?'+':''}¥${netF.toLocaleString()}</td><td class="p-1.5 font-bold ${curCash<safetyLimit?'text-rose-600 bg-rose-50':'text-emerald-700'}">¥${curCash.toLocaleString()}</td><td class="p-1.5 font-bold text-indigo-700">¥${curRes.nisaArr[i].toLocaleString()}</td><td class="p-1.5 font-bold text-blue-800">¥${curRes.totalArr[i].toLocaleString()}</td></tr>`;
       }
 
@@ -973,8 +986,9 @@
         ];
       }
 
+      // チャート描画（明示的DOM存在チェック）
       const canvasAsset = document.getElementById('assetChart');
-      if (canvasAsset) {
+      if (canvasAsset && canvasAsset.offsetParent !== null) {
         if (assetChart) assetChart.destroy();
         assetChart = new Chart(canvasAsset.getContext('2d'), {
           type: 'line',
@@ -992,7 +1006,7 @@
       }
 
       const canvasCf = document.getElementById('cashflowChart');
-      if (canvasCf) {
+      if (canvasCf && canvasCf.offsetParent !== null) {
         if (cfChart) cfChart.destroy();
         cfChart = new Chart(canvasCf.getContext('2d'), {
           type: 'bar',
@@ -1008,7 +1022,7 @@
       }
 
       const canvasRatio = document.getElementById('ratioChart');
-      if (canvasRatio) {
+      if (canvasRatio && canvasRatio.offsetParent !== null) {
         if (ratioChart) ratioChart.destroy();
         ratioChart = new Chart(canvasRatio.getContext('2d'), {
           type: 'bar',
@@ -1026,7 +1040,7 @@
       }
 
       const canvasPie = document.getElementById('pieChart');
-      if (canvasPie) {
+      if (canvasPie && canvasPie.offsetParent !== null) {
         if (pieChart) pieChart.destroy();
         pieChart = new Chart(canvasPie.getContext('2d'), {
           type: 'doughnut',
