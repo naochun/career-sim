@@ -4,15 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>キャリア・資産形成シミュレーター</title>
-  
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
   <style>
     @media print {
       body { background-color: #ffffff !important; padding: 0 !important; color: #000000 !important; }
@@ -45,7 +42,6 @@
 
   <!-- シミュレーター本体 -->
   <div id="appScreen" class="max-w-7xl mx-auto space-y-5 hidden">
-
     <!-- 印刷用ヘッダー -->
     <div class="print-only border-b pb-3 mb-3">
       <h1 class="text-xl font-bold text-slate-900">ライフプラン＆資産形成シミュレーション レポート</h1>
@@ -61,7 +57,6 @@
         </div>
         <p class="text-xs text-slate-500 mt-0.5">複数シナリオ保存 / A/B比較 / インフレ率・防衛資金対応</p>
       </div>
-
       <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
         <button onclick="toggleInflation()" id="inflationToggleBtn" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-3 rounded-lg border">
           表示: 名目額
@@ -90,7 +85,6 @@
           削除
         </button>
       </div>
-
       <div class="flex items-center gap-2 border-t md:border-t-0 md:border-l border-blue-200 pt-2 md:pt-0 md:pl-3">
         <span class="font-bold text-indigo-900">⚖️ 比較(重ね合わせ):</span>
         <select id="compareScenarioSelect" onchange="calculate()" class="p-1.5 border rounded-lg bg-white text-slate-800 shadow-sm">
@@ -161,7 +155,6 @@
 
     <!-- 設定・編集コントロール -->
     <div class="no-print space-y-5">
-
       <!-- 1. 全体設定 ＆ 補助機能トグル -->
       <div class="bg-white p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 border-b pb-2">
@@ -179,7 +172,6 @@
             </label>
           </div>
         </div>
-
         <div class="grid grid-cols-2 md:grid-cols-6 gap-3 text-xs">
           <div>
             <label class="font-semibold block text-slate-700">計算年数 (年)</label>
@@ -276,7 +268,6 @@
         </h2>
         <div id="phaseDetailEditors" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3"></div>
       </div>
-
     </div>
 
     <!-- テーブル1: 収入詳細 -->
@@ -334,7 +325,6 @@
         <tbody id="assetTableBody" class="divide-y divide-slate-200"></tbody>
       </table>
     </div>
-
   </div>
 
   <script>
@@ -347,6 +337,7 @@
       appId: "1:498157804296:web:39f79337312648bae8aabd",
       measurementId: "G-YFLXJK0X80"
     };
+
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
@@ -360,7 +351,9 @@
       });
     }
 
-    function logout() { auth.signOut(); }
+    function logout() {
+      auth.signOut();
+    }
 
     auth.onAuthStateChanged(user => {
       if (user) {
@@ -401,7 +394,8 @@
     const defaultPhases = [
       {
         name: "フェーズ0：新生活期",
-        startYear: 1, endYear: 2,
+        startYear: 1,
+        endYear: 2,
         items: [
           { name: "寮費・共益費", amount: 15000, type: "monthly" },
           { name: "水道光熱費", amount: 15000, type: "monthly" },
@@ -413,7 +407,8 @@
       },
       {
         name: "フェーズ1：独身寮生活期",
-        startYear: 3, endYear: 4,
+        startYear: 3,
+        endYear: 4,
         items: [
           { name: "寮費・共益費", amount: 15000, type: "monthly" },
           { name: "水道光熱費", amount: 15000, type: "monthly" },
@@ -425,7 +420,8 @@
       },
       {
         name: "フェーズ2：一人暮らし賃貸期",
-        startYear: 5, endYear: 7,
+        startYear: 5,
+        endYear: 7,
         items: [
           { name: "賃貸家賃", amount: 65000, type: "monthly" },
           { name: "水道光熱費", amount: 15000, type: "monthly" },
@@ -438,7 +434,8 @@
       },
       {
         name: "フェーズ3：結婚・世帯生活期",
-        startYear: 8, endYear: 10,
+        startYear: 8,
+        endYear: 10,
         items: [
           { name: "世帯住居費(本人負担)", amount: 100000, type: "monthly" },
           { name: "水道光熱費", amount: 40000, type: "monthly" },
@@ -473,12 +470,13 @@
       const user = auth.currentUser;
       if (!user) return;
       document.getElementById('syncStatus').innerText = "☁️ 読込中...";
-
       try {
         const snapshot = await db.collection('user_simulations').doc(user.uid).collection('scenarios').get();
         allScenariosMap = {};
         if (!snapshot.empty) {
-          snapshot.forEach(doc => { allScenariosMap[doc.id] = doc.data(); });
+          snapshot.forEach(doc => {
+            allScenariosMap[doc.id] = doc.data();
+          });
           updateScenarioDropdowns();
           loadScenarioData(currentScenarioId);
         } else {
@@ -500,18 +498,18 @@
       if (!select || !compareSelect) return;
       select.innerHTML = '';
       compareSelect.innerHTML = '<option value="none">重畳なし (単一表示)</option>';
-
       Object.keys(allScenariosMap).forEach(id => {
         const item = allScenariosMap[id];
         const name = item.scenarioName || id;
-        
         const opt = document.createElement('option');
-        opt.value = id; opt.innerText = name;
+        opt.value = id;
+        opt.innerText = name;
         if (id === currentScenarioId) opt.selected = true;
         select.appendChild(opt);
 
         const compOpt = document.createElement('option');
-        compOpt.value = id; compOpt.innerText = `比較: ${name}`;
+        compOpt.value = id;
+        compOpt.innerText = `比較: ${name}`;
         compareSelect.appendChild(compOpt);
       });
     }
@@ -568,7 +566,6 @@
         return;
       }
       if (!confirm(`現在のシナリオ「${allScenariosMap[currentScenarioId]?.scenarioName}」を削除しますか？`)) return;
-
       try {
         await getScenarioDocRef(currentScenarioId).delete();
       } catch (e) {}
@@ -596,6 +593,7 @@
         if (d.bonusMonths) document.getElementById('bonusMonths').value = d.bonusMonths;
         if (d.safetyCash) document.getElementById('safetyCash').value = d.safetyCash;
         if (d.inflationRate) document.getElementById('inflationRate').value = d.inflationRate;
+
         nisaBlocks = d.nisaBlocks ? JSON.parse(JSON.stringify(d.nisaBlocks)) : JSON.parse(JSON.stringify(defaultNisaBlocks));
         salaryMaster = d.salaryMaster ? JSON.parse(JSON.stringify(d.salaryMaster)) : JSON.parse(JSON.stringify(defaultSalaryMaster));
         phases = d.phases ? JSON.parse(JSON.stringify(d.phases)) : JSON.parse(JSON.stringify(defaultPhases));
@@ -619,7 +617,9 @@
       const newSalary = Number(document.getElementById('startingSalary').value) || 340000;
       if (isAuto) {
         const diff = newSalary - prevStartingSalary;
-        salaryMaster.forEach(item => { item.baseMonthly += diff; });
+        salaryMaster.forEach(item => {
+          item.baseMonthly += diff;
+        });
       } else {
         salaryMaster[0].baseMonthly = newSalary;
       }
@@ -673,7 +673,12 @@
         container.appendChild(div);
       });
     }
-    function addNisaBlock() { nisaBlocks.push({ startYear: 1, endYear: 10, monthly: 50000, rate: 5.0 }); renderNisaBlocks(); calculate(); }
+
+    function addNisaBlock() {
+      nisaBlocks.push({ startYear: 1, endYear: 10, monthly: 50000, rate: 5.0 });
+      renderNisaBlocks();
+      calculate();
+    }
 
     function renderSalaryEditor() {
       const calcYears = Math.min(40, Math.max(1, Number(document.getElementById('calcYears').value) || 10));
@@ -721,7 +726,8 @@
       const calcY = Number(document.getElementById('calcYears').value) || 10;
       phases.push({
         name: `フェーズ${phases.length}：新規フェーズ`,
-        startYear: 1, endYear: calcY,
+        startYear: 1,
+        endYear: calcY,
         items: [{ name: "基本生活費", amount: 120000, type: "monthly" }]
       });
       renderPhaseList();
@@ -780,15 +786,55 @@
         container.appendChild(div);
       });
     }
-    function addEventRow() { customEvents.push({ year: 3, name: "臨時支出", amount: 200000 }); renderEventList(); calculate(); }
+
+    function addEventRow() {
+      customEvents.push({ year: 3, name: "臨時支出", amount: 200000 });
+      renderEventList();
+      calculate();
+    }
 
     let assetChart = null, cfChart = null, ratioChart = null, pieChart = null;
+
+    /**
+     * 日本の給与所得控除・社会保険料・累進所得税・住民税（1年目非課税）を考慮した手取り計算
+     */
+    function calculateAccurateNetIncome(gross, year) {
+      if (gross <= 0) return 0;
+      const siRate = gross > 10000000 ? 0.138 : 0.148;
+      const socialInsurance = Math.round(gross * siRate);
+
+      let empDeduction = 0;
+      if (gross <= 1800000) empDeduction = gross * 0.4 - 100000;
+      else if (gross <= 3600000) empDeduction = gross * 0.3 + 80000;
+      else if (gross <= 6600000) empDeduction = gross * 0.2 + 440000;
+      else if (gross <= 8500000) empDeduction = gross * 0.1 + 1100000;
+      else empDeduction = 1950000;
+      empDeduction = Math.max(550000, empDeduction);
+
+      const taxableInc = Math.max(0, gross - empDeduction - socialInsurance - 480000);
+      let incTax = 0;
+      if (taxableInc <= 1950000) incTax = taxableInc * 0.05;
+      else if (taxableInc <= 3300000) incTax = taxableInc * 0.10 - 97500;
+      else if (taxableInc <= 6950000) incTax = taxableInc * 0.20 - 427500;
+      else if (taxableInc <= 8999000) incTax = taxableInc * 0.23 - 636000;
+      else incTax = taxableInc * 0.33 - 1536000;
+      incTax = Math.round(Math.max(0, incTax) * 1.021);
+
+      // 1年目は住民税非課税
+      let resTax = 0;
+      if (year > 1) {
+        const resTaxable = Math.max(0, gross - empDeduction - socialInsurance - 430000);
+        resTax = Math.round(resTaxable * 0.10 + 5000);
+      }
+
+      return Math.round(gross - socialInsurance - incTax - resTax);
+    }
 
     function runSimCalculation(customSalary, customPhases, customEventsList, customNisa, calcY, bonusM, bRate, isBear, inflRate) {
       let cash = 0, nisa = 0;
       const totalArr = [], cashArr = [], nisaArr = [], incArr = [], expArr = [];
       let totEarned = 0, totSpent = 0, minC = Infinity, minCYear = 1;
-      const rLiving = [], rNisa = [], rSpecial = [], rSav = [];
+      const rLiving = [], rNisa = [], rSpecial = [], rSavings = []; // ★rSavings として統一定義
       let sLiv = 0, sNis = 0, sSpe = 0;
 
       for (let i = 0; i < calcY; i++) {
@@ -804,7 +850,7 @@
         if (i === 0) bonM = baseM * 3.0;
 
         const gross = (baseM * 12) + (otM * 12) + bonM;
-        const takeHome = gross <= 6000000 ? gross * 0.78 : (gross <= 8000000 ? gross * 0.75 : gross * 0.73);
+        const takeHome = calculateAccurateNetIncome(gross, item.year);
         totEarned += takeHome;
 
         let annualLiving = 0;
@@ -846,11 +892,16 @@
 
         const netFlow = takeHome - totalExpense;
         cash += netFlow;
+
         const totAsset = cash + nisa;
+        if (cash < minC) {
+          minC = cash;
+          minCYear = item.year;
+        }
 
-        if (cash < minC) { minC = cash; minCYear = item.year; }
-
-        sLiv += annualLiving; sNis += nisaYear; sSpe += specialTotal;
+        sLiv += annualLiving;
+        sNis += nisaYear;
+        sSpe += specialTotal;
 
         totalArr.push(Math.round(totAsset * dFactor));
         nisaArr.push(Math.round(nisa * dFactor));
@@ -896,19 +947,24 @@
       for (let i = 0; i < calcYears; i++) {
         const item = salaryMaster[i] || { year: i+1, age: 24+i, grade: "主査", baseMonthly: 590000, otHours: 0, hasOt: false };
         labels.push(`${item.year}年目(${item.age}歳)`);
-
         const dFactor = isRealValueMode ? Math.pow(1 + inflation, -i) : 1.0;
+
         let baseM = Number(item.baseMonthly) || 0;
         if (isAutoBear) baseM = baseM * Math.pow(1 + bearRate, i);
+
         const otM = item.hasOt ? (baseM / 160) * 1.25 * (Number(item.otHours) || 0) : 0;
-        let bonM = baseM * bonusMonths; if (i === 0) bonM = baseM * 3.0;
+        let bonM = baseM * bonusMonths;
+        if (i === 0) bonM = baseM * 3.0;
+
         const gross = (baseM * 12) + (otM * 12) + bonM;
 
         let matchedPhase = "未設定", annLiv = 0;
         for (let p of phases) {
           if (item.year >= p.startYear && item.year <= p.endYear) {
             matchedPhase = p.name;
-            if (p.items) p.items.forEach(it => { annLiv += it.type === 'monthly' ? (Number(it.amount)||0) * 12 : (Number(it.amount)||0); });
+            if (p.items) p.items.forEach(it => {
+              annLiv += it.type === 'monthly' ? (Number(it.amount)||0) * 12 : (Number(it.amount)||0);
+            });
             break;
           }
         }
@@ -930,7 +986,6 @@
           }
         }
         const curNisaYear = curNisaMonth * 12;
-
         const curCash = curRes.cashArr[i];
         if (curCash < safetyLimit) safetyAlertYears.push(`${item.year}年目(¥${Math.round(curCash/10000)}万)`);
 
@@ -943,12 +998,16 @@
 
       const elFinalAsset = document.getElementById('kpiFinalAsset');
       if (elFinalAsset) elFinalAsset.innerText = '¥' + (curRes.totalArr[curRes.totalArr.length-1]/10000).toLocaleString() + '万円';
+
       const elFinalNisa = document.getElementById('kpiFinalNisa');
       if (elFinalNisa) elFinalNisa.innerText = '¥' + (curRes.nisaArr[curRes.nisaArr.length-1]/10000).toLocaleString() + '万円';
+
       const elMinCash = document.getElementById('kpiMinCash');
       if (elMinCash) elMinCash.innerText = '¥' + (curRes.minC/10000).toLocaleString() + '万円';
+
       const elMinCashYear = document.getElementById('kpiMinCashYear');
       if (elMinCashYear) elMinCashYear.innerText = `到達: ${curRes.minCYear}年目時点`;
+
       const elTotalFlow = document.getElementById('kpiTotalFlow');
       if (elTotalFlow) elTotalFlow.innerText = `手取: ¥${Math.round(curRes.totEarned/10000).toLocaleString()}万 / 支出: ¥${Math.round(curRes.totSpent/10000).toLocaleString()}万`;
 
@@ -981,8 +1040,21 @@
           inflation
         );
         compareDatasets = [
-          { label: `比較[${cData.scenarioName}] 総資産`, data: compRes.totalArr, borderColor: '#f59e0b', borderDash: [6, 4], fill: false, tension: 0.2 },
-          { label: `比較[${cData.scenarioName}] 手元現金`, data: compRes.cashArr, borderColor: '#ef4444', borderDash: [3, 3], fill: false }
+          {
+            label: `比較[${cData.scenarioName}] 総資産`,
+            data: compRes.totalArr,
+            borderColor: '#f59e0b',
+            borderDash: [6, 4],
+            fill: false,
+            tension: 0.2
+          },
+          {
+            label: `比較[${cData.scenarioName}] 手元現金`,
+            data: compRes.cashArr,
+            borderColor: '#ef4444',
+            borderDash: [3, 3],
+            fill: false
+          }
         ];
       }
 
@@ -1001,7 +1073,13 @@
               ...compareDatasets
             ]
           },
-          options: { responsive: true, maintainAspectRatio: false, scales: { y: { ticks: { callback: v => '¥' + (v/10000).toLocaleString() + '万' } } } }
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: { ticks: { callback: v => '¥' + (v/10000).toLocaleString() + '万' } }
+            }
+          }
         });
       }
 
@@ -1017,7 +1095,13 @@
               { label: '年間総支出', data: curRes.expArr, backgroundColor: '#f43f5e' }
             ]
           },
-          options: { responsive: true, maintainAspectRatio: false, scales: { y: { ticks: { callback: v => '¥' + (v/10000).toLocaleString() + '万' } } } }
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: { ticks: { callback: v => '¥' + (v/10000).toLocaleString() + '万' } }
+            }
+          }
         });
       }
 
@@ -1035,7 +1119,14 @@
               { label: '純預金増加%', data: curRes.rSavings, backgroundColor: '#3b82f6' }
             ]
           },
-          options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true, max: 100 } } }
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: { stacked: true },
+              y: { stacked: true, max: 100 }
+            }
+          }
         });
       }
 
@@ -1046,9 +1137,15 @@
           type: 'doughnut',
           data: {
             labels: ['生活費計', 'NISA投資計', '特別支出計'],
-            datasets: [{ data: [curRes.sLiv, curRes.sNis, curRes.sSpe], backgroundColor: ['#10b981', '#6366f1', '#f43f5e'] }]
+            datasets: [{
+              data: [curRes.sLiv, curRes.sNis, curRes.sSpe],
+              backgroundColor: ['#10b981', '#6366f1', '#f43f5e']
+            }]
           },
-          options: { responsive: true, maintainAspectRatio: false }
+          options: {
+            responsive: true,
+            maintainAspectRatio: false
+          }
         });
       }
     }
