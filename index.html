@@ -8,7 +8,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <!-- Firebase SDK (v9 compat) -->
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -90,7 +90,6 @@
         </button>
       </div>
 
-      <!-- シナリオA/B重ね合わせ比較 -->
       <div class="flex items-center gap-2 border-t md:border-t-0 md:border-l border-blue-200 pt-2 md:pt-0 md:pl-3">
         <span class="font-bold text-indigo-900">⚖️ 比較(重ね合わせ):</span>
         <select id="compareScenarioSelect" onchange="calculate()" class="p-1.5 border rounded-lg bg-white text-slate-800 shadow-sm">
@@ -139,7 +138,7 @@
       </div>
     </div>
 
-    <!-- グラフエリア（4大チャート対応） -->
+    <!-- グラフエリア -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 card bg-white p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 avoid-break">
       <div>
         <h3 class="font-bold text-xs md:text-sm mb-2 text-slate-800">■ 資産推移（純資産・現金・NISA・比較）</h3>
@@ -159,7 +158,7 @@
       </div>
     </div>
 
-    <!-- 設定・編集コントロール（Web操作用） -->
+    <!-- 設定・編集コントロール -->
     <div class="no-print space-y-5">
 
       <!-- 1. 全体設定 ＆ 補助機能トグル -->
@@ -546,7 +545,7 @@
         updateScenarioDropdowns();
         alert(`シナリオ「${data.scenarioName}」をクラウドに保存しました！`);
       } catch (e) {
-        alert("クラウド保存に失敗しました（権限エラー等のためローカルに反映します）: " + e.message);
+        alert("クラウド保存に失敗しました: " + e.message);
         allScenariosMap[targetId] = data;
         updateScenarioDropdowns();
         document.getElementById('syncStatus').innerText = "⚠️ 保存失敗(ローカル保存)";
@@ -813,7 +812,9 @@
           for (let p of customPhases) {
             if (item.year >= p.startYear && item.year <= p.endYear) {
               if (p.items) {
-                p.items.forEach(it => { annualLiving += it.type === 'monthly' ? (Number(it.amount)||0) * 12 : (Number(it.amount)||0); });
+                p.items.forEach(it => {
+                  annualLiving += it.type === 'monthly' ? (Number(it.amount)||0) * 12 : (Number(it.amount)||0);
+                });
               }
               break;
             }
@@ -831,7 +832,9 @@
         if (customNisa) {
           for (let b of customNisa) {
             if (item.year >= b.startYear && item.year <= b.endYear) {
-              nisaMonth = Number(b.monthly) || 0; nisaRate = (Number(b.rate) || 5.0) / 100; break;
+              nisaMonth = Number(b.monthly) || 0;
+              nisaRate = (Number(b.rate) || 5.0) / 100;
+              break;
             }
           }
         }
@@ -970,7 +973,6 @@
         ];
       }
 
-      // チャート描画
       const canvasAsset = document.getElementById('assetChart');
       if (canvasAsset) {
         if (assetChart) assetChart.destroy();
