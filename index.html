@@ -25,17 +25,16 @@
       th, td { padding: 3px 5px !important; }
     }
     .print-only { display: none; }
-    .tab-active { border-bottom: 2px solid #2563eb; color: #2563eb; font-weight: bold; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 p-3 md:p-6 font-sans">
 
-  <!-- ログイン前画面 -->
+  <!-- ログイン画面 -->
   <div id="authScreen" class="min-h-[80vh] flex flex-col items-center justify-center space-y-4">
     <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 text-center max-w-sm w-full">
       <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">🔒</div>
       <h2 class="text-xl font-bold text-slate-900 mb-2">キャリア＆資産シミュレーター</h2>
-      <p class="text-xs text-slate-500 mb-6">許可されたGoogleアカウントでログインすると、クラウド同期機能が利用可能になります。</p>
+      <p class="text-xs text-slate-500 mb-6">許可されたGoogleアカウントでログインすると、マルチシナリオ保存機能が利用可能になります。</p>
       <button onclick="loginWithGoogle()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 px-4 rounded-xl shadow flex items-center justify-center gap-2 text-sm transition">
         <span>Googleでサインイン</span>
       </button>
@@ -43,13 +42,13 @@
     </div>
   </div>
 
-  <!-- シミュレーター本体（ログイン後表示） -->
+  <!-- シミュレーター本体 -->
   <div id="appScreen" class="max-w-7xl mx-auto space-y-5 hidden">
 
     <!-- 印刷用ヘッダー -->
     <div class="print-only border-b pb-3 mb-3">
       <h1 class="text-xl font-bold text-slate-900">ライフプラン＆資産形成シミュレーション レポート</h1>
-      <p class="text-[11px] text-slate-500 mt-1">出力日時: <span id="printDate"></span> | 対象者専用レポート</p>
+      <p class="text-[11px] text-slate-500 mt-1">出力日時: <span id="printDate"></span> | 対象シナリオ: <span id="printScenarioName">標準プラン</span></p>
     </div>
 
     <!-- Web操作用ヘッダー -->
@@ -59,23 +58,13 @@
           <h1 class="text-lg md:text-xl font-bold text-slate-900">キャリア＆資産形成シミュレーター</h1>
           <span id="syncStatus" class="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium">☁️ 同期完了</span>
         </div>
-        <p class="text-xs text-slate-500 mt-0.5">マルチデバイス同期 / シナリオ比較 / インフレ率・防衛資金対応</p>
+        <p class="text-xs text-slate-500 mt-0.5">複数シナリオ保存 / A/B比較 / インフレ率・防衛資金対応</p>
       </div>
 
       <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
-        <!-- 表示モード切替 -->
         <button onclick="toggleInflation()" id="inflationToggleBtn" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-3 rounded-lg border">
           表示: 名目額
         </button>
-        <!-- シナリオA/B比較 -->
-        <button onclick="toggleScenarioB()" id="scenarioBBtn" class="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium py-2 px-3 rounded-lg border border-indigo-200">
-          比較: シナリオB重畳OFF
-        </button>
-        <!-- クラウド保存 -->
-        <button onclick="saveToCloud()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs md:text-sm font-bold py-2 px-4 rounded-lg shadow transition flex items-center gap-1">
-          ☁️ クラウドへ保存
-        </button>
-        <!-- 印刷・PDF -->
         <button onclick="window.print()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs md:text-sm font-semibold py-2 px-3 rounded-lg shadow transition">
           PDF出力
         </button>
@@ -83,10 +72,37 @@
       </div>
     </header>
 
+    <!-- シナリオ管理バー（複数シナリオ保存・切替） -->
+    <div class="no-print bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 p-3.5 rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs">
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="font-bold text-blue-900 flex items-center gap-1">📁 シナリオ選択:</span>
+        <select id="scenarioSelect" onchange="onScenarioChange()" class="p-1.5 border rounded-lg bg-white font-semibold text-slate-800 min-w-[160px] shadow-sm">
+          <option value="default">標準プラン (デフォルト)</option>
+        </select>
+        <button onclick="saveCurrentScenario()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-lg shadow transition flex items-center gap-1">
+          💾 上書き保存
+        </button>
+        <button onclick="saveAsNewScenario()" class="bg-white hover:bg-slate-50 text-blue-700 border border-blue-300 font-semibold px-3 py-1.5 rounded-lg shadow-sm transition">
+          + 名前をつけて別名保存
+        </button>
+        <button onclick="deleteScenario()" id="deleteScenarioBtn" class="text-rose-600 hover:text-rose-700 font-medium px-2 py-1.5">
+          削除
+        </button>
+      </div>
+
+      <!-- シナリオA/B重ね合わせ比較 -->
+      <div class="flex items-center gap-2 border-t md:border-t-0 md:border-l border-blue-200 pt-2 md:pt-0 md:pl-3">
+        <span class="font-bold text-indigo-900">⚖️ 比較(重ね合わせ):</span>
+        <select id="compareScenarioSelect" onchange="calculate()" class="p-1.5 border rounded-lg bg-white text-slate-800 shadow-sm">
+          <option value="none">重畳なし (単一表示)</option>
+        </select>
+      </div>
+    </div>
+
     <!-- 生活防衛資金アラート -->
     <div id="safetyAlertBanner" class="p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl text-xs flex items-center gap-2 hidden">
       <span class="text-base">⚠️</span>
-      <span id="safetyAlertText">設定された生活防衛資金を下回る年次が存在します。</span>
+      <span id="safetyAlertText">生活防衛資金を下回る年次が存在します。</span>
     </div>
 
     <!-- 重要サマリー KPI カード -->
@@ -126,7 +142,7 @@
     <!-- グラフエリア（4大チャート対応） -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 card bg-white p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 avoid-break">
       <div>
-        <h3 class="font-bold text-xs md:text-sm mb-2 text-slate-800">■ 資産推移（純資産・現金・NISA）</h3>
+        <h3 class="font-bold text-xs md:text-sm mb-2 text-slate-800">■ 資産推移（純資産・現金・NISA・シナリオ比較）</h3>
         <div class="h-60"><canvas id="assetChart"></canvas></div>
       </div>
       <div>
@@ -152,7 +168,6 @@
           <h2 class="font-bold text-xs md:text-sm text-slate-800 flex items-center gap-1.5">
             <span>⚙️</span> 1. 全体前提条件＆補助トグル
           </h2>
-          <!-- 補助機能トグル群 -->
           <div class="flex flex-wrap items-center gap-3 text-xs">
             <label class="flex items-center gap-1 cursor-pointer">
               <input type="checkbox" id="toggleAutoSlide" checked class="rounded text-blue-600">
@@ -193,7 +208,7 @@
         </div>
       </div>
 
-      <!-- 2. NISA・運用ルール（期間分割＆利率設定） -->
+      <!-- 2. NISA・運用ルール -->
       <div class="bg-white p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
         <div class="flex justify-between items-center border-b pb-2">
           <h2 class="font-bold text-xs md:text-sm text-indigo-700 flex items-center gap-1.5">
@@ -334,7 +349,6 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // 認証処理
     function loginWithGoogle() {
       const provider = new firebase.auth.GoogleAuthProvider();
       auth.signInWithPopup(provider).catch(err => {
@@ -344,16 +358,14 @@
       });
     }
 
-    function logout() {
-      auth.signOut();
-    }
+    function logout() { auth.signOut(); }
 
     auth.onAuthStateChanged(user => {
       if (user) {
         if (user.email === "naochun21@gmail.com") {
           document.getElementById('authScreen').classList.add('hidden');
           document.getElementById('appScreen').classList.remove('hidden');
-          loadFromCloud();
+          initScenarioManager();
         } else {
           alert("アクセス権限のないアカウントです: " + user.email);
           auth.signOut();
@@ -364,10 +376,12 @@
       }
     });
 
+    // 状態管理
     let isRealValueMode = false;
-    let showScenarioB = false;
-    let scenarioBData = null;
+    let currentScenarioId = "default";
+    let allScenariosMap = {}; // キャッシュ
 
+    // モデルデータ
     let nisaBlocks = [
       { startYear: 1, endYear: 2, monthly: 50000, rate: 5.0 },
       { startYear: 3, endYear: 10, monthly: 100000, rate: 5.0 }
@@ -447,6 +461,153 @@
       { year: 7, name: "結婚費用自腹", amount: 2000000 }
     ];
 
+    // シナリオ管理システム
+    function getScenarioDocRef(scenarioId) {
+      const user = auth.currentUser;
+      return db.collection('user_simulations').doc(user.uid).collection('scenarios').doc(scenarioId);
+    }
+
+    async function initScenarioManager() {
+      const user = auth.currentUser;
+      if (!user) return;
+      document.getElementById('syncStatus').innerText = "☁️ 読込中...";
+
+      try {
+        const snapshot = await db.collection('user_simulations').doc(user.uid).collection('scenarios').get();
+        allScenariosMap = {};
+        if (snapshot.empty) {
+          // 初期シナリオをFirestoreに書き込み
+          await saveCurrentScenario("default", "標準プラン");
+        } else {
+          snapshot.forEach(doc => {
+            allScenariosMap[doc.id] = doc.data();
+          });
+        }
+        updateScenarioDropdowns();
+        loadScenarioData(currentScenarioId);
+      } catch (err) {
+        console.error("Firestore error:", err);
+      }
+    }
+
+    function updateScenarioDropdowns() {
+      const select = document.getElementById('scenarioSelect');
+      const compareSelect = document.getElementById('compareScenarioSelect');
+      select.innerHTML = '';
+      compareSelect.innerHTML = '<option value="none">重畳なし (単一表示)</option>';
+
+      Object.keys(allScenariosMap).forEach(id => {
+        const item = allScenariosMap[id];
+        const name = item.scenarioName || id;
+        
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.innerText = name;
+        if (id === currentScenarioId) opt.selected = true;
+        select.appendChild(opt);
+
+        const compOpt = document.createElement('option');
+        compOpt.value = id;
+        compOpt.innerText = `比較: ${name}`;
+        compareSelect.appendChild(compOpt);
+      });
+    }
+
+    function getCurrentFormData(name = "") {
+      return {
+        scenarioName: name || (allScenariosMap[currentScenarioId] ? allScenariosMap[currentScenarioId].scenarioName : "標準プラン"),
+        calcYears: document.getElementById('calcYears').value,
+        startingSalary: document.getElementById('startingSalary').value,
+        bearRate: document.getElementById('bearRate').value,
+        toggleAutoBear: document.getElementById('toggleAutoBear').checked,
+        toggleAutoSlide: document.getElementById('toggleAutoSlide').checked,
+        bonusMonths: document.getElementById('bonusMonths').value,
+        safetyCash: document.getElementById('safetyCash').value,
+        inflationRate: document.getElementById('inflationRate').value,
+        nisaBlocks: nisaBlocks,
+        salaryMaster: salaryMaster,
+        phases: phases,
+        customEvents: customEvents,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+    }
+
+    async function saveCurrentScenario(targetId = currentScenarioId, customName = "") {
+      const user = auth.currentUser;
+      if (!user) return;
+      document.getElementById('syncStatus').innerText = "☁️ 保存中...";
+      const data = getCurrentFormData(customName);
+      try {
+        await getScenarioDocRef(targetId).set(data);
+        allScenariosMap[targetId] = data;
+        document.getElementById('syncStatus').innerText = "☁️ 同期完了 (" + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) + ")";
+        updateScenarioDropdowns();
+        alert(`シナリオ「${data.scenarioName}」をクラウドに保存しました！`);
+      } catch (e) {
+        alert("保存エラー: " + e.message);
+        document.getElementById('syncStatus').innerText = "⚠️ 保存失敗";
+      }
+    }
+
+    async function saveAsNewScenario() {
+      const name = prompt("新しいシナリオ名を入力してください（例: 車買替プラン、転職想定など）:");
+      if (!name) return;
+      const newId = "scenario_" + Date.now();
+      currentScenarioId = newId;
+      await saveCurrentScenario(newId, name);
+      updateScenarioDropdowns();
+    }
+
+    async function deleteScenario() {
+      if (Object.keys(allScenariosMap).length <= 1) {
+        alert("シナリオが1つしかないため削除できません。");
+        return;
+      }
+      if (!confirm(`現在のシナリオ「${allScenariosMap[currentScenarioId]?.scenarioName}」を削除しますか？`)) return;
+
+      try {
+        await getScenarioDocRef(currentScenarioId).delete();
+        delete allScenariosMap[currentScenarioId];
+        currentScenarioId = Object.keys(allScenariosMap)[0];
+        updateScenarioDropdowns();
+        loadScenarioData(currentScenarioId);
+        alert("シナリオを削除しました。");
+      } catch (e) {
+        alert("削除エラー: " + e.message);
+      }
+    }
+
+    function onScenarioChange() {
+      currentScenarioId = document.getElementById('scenarioSelect').value;
+      loadScenarioData(currentScenarioId);
+    }
+
+    function loadScenarioData(id) {
+      const d = allScenariosMap[id];
+      if (!d) return;
+
+      document.getElementById('printScenarioName').innerText = d.scenarioName || "標準プラン";
+      if (d.calcYears) document.getElementById('calcYears').value = d.calcYears;
+      if (d.startingSalary) document.getElementById('startingSalary').value = d.startingSalary;
+      if (d.bearRate) document.getElementById('bearRate').value = d.bearRate;
+      if (d.toggleAutoBear !== undefined) document.getElementById('toggleAutoBear').checked = d.toggleAutoBear;
+      if (d.toggleAutoSlide !== undefined) document.getElementById('toggleAutoSlide').checked = d.toggleAutoSlide;
+      if (d.bonusMonths) document.getElementById('bonusMonths').value = d.bonusMonths;
+      if (d.safetyCash) document.getElementById('safetyCash').value = d.safetyCash;
+      if (d.inflationRate) document.getElementById('inflationRate').value = d.inflationRate;
+      if (d.nisaBlocks) nisaBlocks = d.nisaBlocks;
+      if (d.salaryMaster) salaryMaster = d.salaryMaster;
+      if (d.phases) phases = d.phases;
+      if (d.customEvents) customEvents = d.customEvents;
+
+      renderNisaBlocks();
+      renderSalaryEditor();
+      renderPhaseList();
+      renderEventList();
+      calculate();
+    }
+
+    // 初任給連動スライド
     let prevStartingSalary = 340000;
     function onStartingSalaryChange() {
       const isAuto = document.getElementById('toggleAutoSlide').checked;
@@ -485,21 +646,6 @@
       calculate();
     }
 
-    function toggleScenarioB() {
-      showScenarioB = !showScenarioB;
-      const btn = document.getElementById('scenarioBBtn');
-      if (showScenarioB) {
-        scenarioBData = JSON.parse(JSON.stringify(salaryMaster));
-        btn.innerText = "比較: シナリオB重畳ON";
-        btn.classList.add('bg-indigo-600', 'text-white');
-      } else {
-        scenarioBData = null;
-        btn.innerText = "比較: シナリオB重畳OFF";
-        btn.classList.remove('bg-indigo-600', 'text-white');
-      }
-      calculate();
-    }
-
     function renderNisaBlocks() {
       const container = document.getElementById('nisaBlocksContainer');
       container.innerHTML = '';
@@ -508,25 +654,20 @@
         div.className = "flex flex-wrap items-center gap-2 bg-slate-50 p-2 rounded border";
         div.innerHTML = `
           <span>期間:</span>
-          <input type="number" min="1" max="40" value="${b.startYear}" class="w-12 p-1 border rounded text-center" onchange="updateNisaBlock(${idx}, 'startYear', this.value)">
+          <input type="number" min="1" max="40" value="${b.startYear}" class="w-12 p-1 border rounded text-center" onchange="nisaBlocks[${idx}].startYear=Number(this.value);calculate();">
           <span>〜</span>
-          <input type="number" min="1" max="40" value="${b.endYear}" class="w-12 p-1 border rounded text-center" onchange="updateNisaBlock(${idx}, 'endYear', this.value)">
+          <input type="number" min="1" max="40" value="${b.endYear}" class="w-12 p-1 border rounded text-center" onchange="nisaBlocks[${idx}].endYear=Number(this.value);calculate();">
           <span>年目 | 積立: ¥</span>
-          <input type="number" step="5000" value="${b.monthly}" class="w-24 p-1 border rounded text-right font-semibold" onchange="updateNisaBlock(${idx}, 'monthly', this.value)">
+          <input type="number" step="5000" value="${b.monthly}" class="w-24 p-1 border rounded text-right font-semibold" onchange="nisaBlocks[${idx}].monthly=Number(this.value);calculate();">
           <span>/月 | 年利:</span>
-          <input type="number" step="0.5" value="${b.rate}" class="w-14 p-1 border rounded text-center" onchange="updateNisaBlock(${idx}, 'rate', this.value)">
+          <input type="number" step="0.5" value="${b.rate}" class="w-14 p-1 border rounded text-center" onchange="nisaBlocks[${idx}].rate=Number(this.value);calculate();">
           <span>%</span>
-          <button onclick="removeNisaBlock(${idx})" class="text-rose-500 font-bold px-1 ml-auto">×</button>
+          <button onclick="nisaBlocks.splice(${idx},1);renderNisaBlocks();calculate();" class="text-rose-500 font-bold px-1 ml-auto">×</button>
         `;
         container.appendChild(div);
       });
     }
-    function addNisaBlock() {
-      nisaBlocks.push({ startYear: 1, endYear: 10, monthly: 50000, rate: 5.0 });
-      renderNisaBlocks(); calculate();
-    }
-    function removeNisaBlock(idx) { nisaBlocks.splice(idx, 1); renderNisaBlocks(); calculate(); }
-    function updateNisaBlock(idx, field, val) { nisaBlocks[idx][field] = Number(val) || 0; calculate(); }
+    function addNisaBlock() { nisaBlocks.push({ startYear: 1, endYear: 10, monthly: 50000, rate: 5.0 }); renderNisaBlocks(); calculate(); }
 
     function renderSalaryEditor() {
       const calcYears = Math.min(40, Math.max(1, Number(document.getElementById('calcYears').value) || 10));
@@ -537,18 +678,13 @@
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td class="p-2 font-medium">${item.year}年目(${item.age}歳)</td>
-          <td class="p-1"><input type="text" value="${item.grade}" class="w-full p-1 border rounded text-xs" onchange="updateSalaryMaster(${i}, 'grade', this.value)"></td>
-          <td class="p-1"><input type="number" step="1000" value="${item.baseMonthly}" class="w-full p-1 border rounded text-xs text-right font-semibold" onchange="updateSalaryMaster(${i}, 'baseMonthly', this.value)"></td>
-          <td class="p-1"><input type="number" value="${item.otHours}" class="w-full p-1 border rounded text-xs text-center" onchange="updateSalaryMaster(${i}, 'otHours', this.value)"></td>
-          <td class="p-1 text-center"><input type="checkbox" ${item.hasOt ? 'checked' : ''} onchange="updateSalaryMaster(${i}, 'hasOt', this.checked)"></td>
+          <td class="p-1"><input type="text" value="${item.grade}" class="w-full p-1 border rounded text-xs" onchange="salaryMaster[${i}].grade=this.value;calculate();"></td>
+          <td class="p-1"><input type="number" step="1000" value="${item.baseMonthly}" class="w-full p-1 border rounded text-xs text-right font-semibold" onchange="salaryMaster[${i}].baseMonthly=Number(this.value);calculate();"></td>
+          <td class="p-1"><input type="number" value="${item.otHours}" class="w-full p-1 border rounded text-xs text-center" onchange="salaryMaster[${i}].otHours=Number(this.value);calculate();"></td>
+          <td class="p-1 text-center"><input type="checkbox" ${item.hasOt ? 'checked' : ''} onchange="salaryMaster[${i}].hasOt=this.checked;calculate();"></td>
         `;
         tbody.appendChild(tr);
       }
-    }
-    function updateSalaryMaster(idx, field, val) {
-      if (field === 'baseMonthly' || field === 'otHours') salaryMaster[idx][field] = Number(val) || 0;
-      else salaryMaster[idx][field] = val;
-      calculate();
     }
 
     function renderPhaseList() {
@@ -558,8 +694,8 @@
         const div = document.createElement('div');
         div.className = "bg-slate-50 p-2 rounded border text-xs flex items-center justify-between gap-1";
         div.innerHTML = `
-          <button onclick="movePhaseUp(${idx})" class="px-1 py-0.5 border bg-white rounded font-bold" ${idx===0?'disabled style="opacity:0.3"':''}>↑</button>
-          <button onclick="movePhaseDown(${idx})" class="px-1 py-0.5 border bg-white rounded font-bold" ${idx===phases.length-1?'disabled style="opacity:0.3"':''}>↓</button>
+          <button onclick="if(${idx}>0){const t=phases[${idx}];phases[${idx}]=phases[${idx}-1];phases[${idx}-1]=t;renderPhaseList();calculate();}" class="px-1 py-0.5 border bg-white rounded font-bold" ${idx===0?'disabled style="opacity:0.3"':''}>↑</button>
+          <button onclick="if(${idx}<phases.length-1){const t=phases[${idx}];phases[${idx}]=phases[${idx}+1];phases[${idx}+1]=t;renderPhaseList();calculate();}" class="px-1 py-0.5 border bg-white rounded font-bold" ${idx===phases.length-1?'disabled style="opacity:0.3"':''}>↓</button>
           <input type="text" value="${p.name}" class="p-1 border rounded flex-1 min-w-[90px] font-semibold" onchange="phases[${idx}].name=this.value;renderPhaseDetailEditors();calculate();">
           <input type="number" value="${p.startYear}" class="w-10 p-1 border rounded text-center" onchange="phases[${idx}].startYear=Number(this.value);calculate();">
           <span>〜</span>
@@ -570,8 +706,6 @@
       });
       renderPhaseDetailEditors();
     }
-    function movePhaseUp(idx) { if(idx>0){ const t=phases[idx]; phases[idx]=phases[idx-1]; phases[idx-1]=t; renderPhaseList(); calculate(); } }
-    function movePhaseDown(idx) { if(idx<phases.length-1){ const t=phases[idx]; phases[idx]=phases[idx+1]; phases[idx+1]=t; renderPhaseList(); calculate(); } }
     function addPhase() { phases.push({ name: "新フェーズ", startYear: 1, endYear: 10, items: [] }); renderPhaseList(); calculate(); }
 
     function renderPhaseDetailEditors() {
@@ -625,10 +759,86 @@
     }
     function addEventRow() { customEvents.push({ year: 3, name: "臨時支出", amount: 200000 }); renderEventList(); calculate(); }
 
-    let assetChart = null;
-    let cfChart = null;
-    let ratioChart = null;
-    let pieChart = null;
+    let assetChart = null, cfChart = null, ratioChart = null, pieChart = null;
+
+    // シミュレーション計算ロジック（単一シナリオ評価用）
+    function runSimCalculation(customSalary, customPhases, customEventsList, customNisa, calcY, bonusM, bRate, isBear, inflRate) {
+      let cash = 0, nisa = 0;
+      const totalArr = [], cashArr = [], nisaArr = [], incArr = [], expArr = [];
+      let totEarned = 0, totSpent = 0, minC = Infinity, minCYear = 1;
+      const rLiving = [], rNisa = [], rSpecial = [], rSav = [];
+      let sLiv = 0, sNis = 0, sSpe = 0;
+
+      for (let i = 0; i < calcY; i++) {
+        const item = customSalary[i] || { year: i+1, age: 24+i, grade: "主査", baseMonthly: 590000, otHours: 0, hasOt: false };
+        const dFactor = isRealValueMode ? Math.pow(1 + inflRate, -i) : 1.0;
+
+        let baseM = item.baseMonthly;
+        if (isBear) baseM = baseM * Math.pow(1 + bRate, i);
+
+        const otRate = (baseM / 160) * 1.25;
+        const otM = item.hasOt ? otRate * item.otHours : 0;
+        let bonM = baseM * bonusM;
+        if (i === 0) bonM = baseM * 3.0;
+
+        const gross = (baseM * 12) + (otM * 12) + bonM;
+        const takeHome = gross <= 6000000 ? gross * 0.78 : (gross <= 8000000 ? gross * 0.75 : gross * 0.73);
+        totEarned += takeHome;
+
+        let annualLiving = 0;
+        for (let p of customPhases) {
+          if (item.year >= p.startYear && item.year <= p.endYear) {
+            if (p.items) {
+              p.items.forEach(it => { annualLiving += it.type === 'monthly' ? it.amount * 12 : it.amount; });
+            }
+            break;
+          }
+        }
+
+        let specialTotal = 0;
+        customEventsList.forEach(ev => {
+          if (ev.year === item.year) specialTotal += ev.amount;
+        });
+
+        let nisaMonth = 0, nisaRate = 0.05;
+        for (let b of customNisa) {
+          if (item.year >= b.startYear && item.year <= b.endYear) {
+            nisaMonth = b.monthly; nisaRate = b.rate / 100; break;
+          }
+        }
+        const nisaYear = nisaMonth * 12;
+        nisa = (nisa + nisaYear) * (1 + nisaRate);
+
+        const totalExpense = annualLiving + nisaYear + specialTotal;
+        totSpent += totalExpense;
+
+        const netFlow = takeHome - totalExpense;
+        cash += netFlow;
+        const totAsset = cash + nisa;
+
+        if (cash < minC) { minC = cash; minCYear = item.year; }
+
+        sLiv += annualLiving; sNis += nisaYear; sSpe += specialTotal;
+
+        totalArr.push(Math.round(totAsset * dFactor));
+        nisaArr.push(Math.round(nisa * dFactor));
+        cashArr.push(Math.round(cash * dFactor));
+        incArr.push(Math.round(takeHome * dFactor));
+        expArr.push(Math.round(totalExpense * dFactor));
+
+        rLiving.push(((annualLiving / takeHome) * 100).toFixed(1));
+        rNisa.push(((nisaYear / takeHome) * 100).toFixed(1));
+        rSpecial.push(((specialTotal / takeHome) * 100).toFixed(1));
+        rSavings.push((Math.max(0, netFlow / takeHome) * 100).toFixed(1));
+      }
+
+      return {
+        totalArr, nisaArr, cashArr, incArr, expArr,
+        totEarned, totSpent, minC, minCYear,
+        rLiving, rNisa, rSpecial, rSavings,
+        sLiv, sNis, sSpe
+      };
+    }
 
     function calculate() {
       const calcYears = Math.min(40, Math.max(1, Number(document.getElementById('calcYears').value) || 10));
@@ -638,123 +848,58 @@
       const bearRate = (Number(document.getElementById('bearRate').value) || 0) / 100;
       const isAutoBear = document.getElementById('toggleAutoBear').checked;
 
-      let cash = 0;
-      let nisaBalance = 0;
-      let minCash = Infinity;
-      let minCashYear = 1;
-      let totalEarned = 0;
-      let totalSpent = 0;
-      let safetyAlertYears = [];
+      // 現在のシナリオ計算
+      const curRes = runSimCalculation(salaryMaster, phases, customEvents, nisaBlocks, calcYears, bonusMonths, bearRate, isAutoBear, inflation);
 
       const labels = [];
-      const totalData = [];
-      const nisaData = [];
-      const cashData = [];
-      const incomeData = [];
-      const expenseData = [];
-
-      const ratioLiving = [];
-      const ratioNisa = [];
-      const ratioSpecial = [];
-      const ratioSavings = [];
-
-      let sumLiving = 0, sumNisa = 0, sumSpecial = 0;
-
       const incTbody = document.getElementById('incomeTableBody');
       const expTbody = document.getElementById('expenseTableBody');
       const astTbody = document.getElementById('assetTableBody');
       incTbody.innerHTML = ''; expTbody.innerHTML = ''; astTbody.innerHTML = '';
 
+      let safetyAlertYears = [];
+
       for (let i = 0; i < calcYears; i++) {
         const item = salaryMaster[i] || { year: i+1, age: 24+i, grade: "主査", baseMonthly: 590000, otHours: 0, hasOt: false };
-        const year = item.year;
-        const age = item.age;
-        labels.push(`${year}年目(${age}歳)`);
+        labels.push(`${item.year}年目(${item.age}歳)`);
 
-        const discountFactor = isRealValueMode ? Math.pow(1 + inflation, -i) : 1.0;
-
+        const dFactor = isRealValueMode ? Math.pow(1 + inflation, -i) : 1.0;
         let baseM = item.baseMonthly;
         if (isAutoBear) baseM = baseM * Math.pow(1 + bearRate, i);
+        const otM = item.hasOt ? (baseM / 160) * 1.25 * item.otHours : 0;
+        let bonM = baseM * bonusMonths; if (i === 0) bonM = baseM * 3.0;
+        const gross = (baseM * 12) + (otM * 12) + bonM;
 
-        const otRate = (baseM / 160) * 1.25;
-        const otM = item.hasOt ? otRate * item.otHours : 0;
-        let bonusM = baseM * bonusMonths;
-        if (i === 0) bonusM = baseM * 3.0;
-
-        const gross = (baseM * 12) + (otM * 12) + bonusM;
-        const takeHome = gross <= 6000000 ? gross * 0.78 : (gross <= 8000000 ? gross * 0.75 : gross * 0.73);
-        totalEarned += takeHome;
-
-        let matchedPhase = "未設定";
-        let annualLiving = 0;
+        let matchedPhase = "未設定", annLiv = 0;
         for (let p of phases) {
-          if (year >= p.startYear && year <= p.endYear) {
+          if (item.year >= p.startYear && item.year <= p.endYear) {
             matchedPhase = p.name;
-            if (p.items) {
-              p.items.forEach(it => {
-                annualLiving += it.type === 'monthly' ? it.amount * 12 : it.amount;
-              });
-            }
+            if (p.items) p.items.forEach(it => { annLiv += it.type === 'monthly' ? it.amount * 12 : it.amount; });
             break;
           }
         }
 
-        let specialTotal = 0;
-        let specialDesc = [];
+        let speDesc = [];
         customEvents.forEach(ev => {
-          if (ev.year === year) {
-            specialTotal += ev.amount;
-            specialDesc.push(`${ev.name}:¥${(ev.amount/10000).toLocaleString()}万`);
-          }
+          if (ev.year === item.year) speDesc.push(`${ev.name}:¥${(ev.amount/10000).toLocaleString()}万`);
         });
 
-        let nisaMonth = 0;
-        let nisaRate = 0.05;
-        for (let b of nisaBlocks) {
-          if (year >= b.startYear && year <= b.endYear) {
-            nisaMonth = b.monthly;
-            nisaRate = b.rate / 100;
-            break;
-          }
-        }
-        const nisaYear = nisaMonth * 12;
-        nisaBalance = (nisaBalance + nisaYear) * (1 + nisaRate);
+        const curCash = curRes.cashArr[i];
+        if (curCash < safetyLimit) safetyAlertYears.push(`${item.year}年目(¥${Math.round(curCash/10000)}万)`);
 
-        const totalExpense = annualLiving + nisaYear + specialTotal;
-        totalSpent += totalExpense;
+        const netF = curRes.incArr[i] - curRes.expArr[i];
 
-        const netFlow = takeHome - totalExpense;
-        cash += netFlow;
-        const totalAsset = cash + nisaBalance;
-
-        if (cash < minCash) { minCash = cash; minCashYear = year; }
-        if (cash < safetyLimit) { safetyAlertYears.push(`${year}年目(¥${Math.round(cash/10000)}万)`); }
-
-        sumLiving += annualLiving;
-        sumNisa += nisaYear;
-        sumSpecial += specialTotal;
-
-        totalData.push(Math.round(totalAsset * discountFactor));
-        nisaData.push(Math.round(nisaBalance * discountFactor));
-        cashData.push(Math.round(cash * discountFactor));
-        incomeData.push(Math.round(takeHome * discountFactor));
-        expenseData.push(Math.round(totalExpense * discountFactor));
-
-        ratioLiving.push(((annualLiving / takeHome) * 100).toFixed(1));
-        ratioNisa.push(((nisaYear / takeHome) * 100).toFixed(1));
-        ratioSpecial.push(((specialTotal / takeHome) * 100).toFixed(1));
-        ratioSavings.push((Math.max(0, netFlow / takeHome) * 100).toFixed(1));
-
-        incTbody.innerHTML += `<tr><td class="p-1.5">${year}年目(${age}歳)</td><td class="p-1.5">${item.grade}</td><td class="p-1.5">¥${Math.round(baseM*discountFactor).toLocaleString()}</td><td class="p-1.5">${item.hasOt ? '¥'+Math.round(otM*discountFactor).toLocaleString() : '-'}</td><td class="p-1.5">¥${Math.round(bonusM*discountFactor).toLocaleString()}</td><td class="p-1.5 font-semibold">¥${Math.round(gross*discountFactor).toLocaleString()}</td><td class="p-1.5 font-bold text-blue-800">¥${Math.round(takeHome*discountFactor).toLocaleString()}</td></tr>`;
-        expTbody.innerHTML += `<tr><td class="p-1.5">${year}年目(${age}歳)</td><td class="p-1.5 text-emerald-700">${matchedPhase}</td><td class="p-1.5">¥${Math.round(annualLiving*discountFactor).toLocaleString()}</td><td class="p-1.5">¥${Math.round(nisaYear*discountFactor).toLocaleString()}</td><td class="p-1.5 text-rose-600">${specialDesc.length ? specialDesc.join(', ') : '-'}</td><td class="p-1.5 font-bold text-emerald-900">¥${Math.round(totalExpense*discountFactor).toLocaleString()}</td></tr>`;
-        astTbody.innerHTML += `<tr><td class="p-1.5">${year}年目(${age}歳)</td><td class="p-1.5 font-semibold ${netFlow>=0?'text-blue-600':'text-rose-600'}">${netFlow>=0?'+':''}¥${Math.round(netFlow*discountFactor).toLocaleString()}</td><td class="p-1.5 font-bold ${cash<safetyLimit?'text-rose-600 bg-rose-50':'text-emerald-700'}">¥${Math.round(cash*discountFactor).toLocaleString()}</td><td class="p-1.5 font-bold text-indigo-700">¥${Math.round(nisaBalance*discountFactor).toLocaleString()}</td><td class="p-1.5 font-bold text-blue-800">¥${Math.round(totalAsset*discountFactor).toLocaleString()}</td></tr>`;
+        incTbody.innerHTML += `<tr><td class="p-1.5">${item.year}年目(${item.age}歳)</td><td class="p-1.5">${item.grade}</td><td class="p-1.5">¥${Math.round(baseM*dFactor).toLocaleString()}</td><td class="p-1.5">${item.hasOt ? '¥'+Math.round(otM*dFactor).toLocaleString() : '-'}</td><td class="p-1.5">¥${Math.round(bonM*dFactor).toLocaleString()}</td><td class="p-1.5 font-semibold">¥${Math.round(gross*dFactor).toLocaleString()}</td><td class="p-1.5 font-bold text-blue-800">¥${curRes.incArr[i].toLocaleString()}</td></tr>`;
+        expTbody.innerHTML += `<tr><td class="p-1.5">${item.year}年目(${item.age}歳)</td><td class="p-1.5 text-emerald-700">${matchedPhase}</td><td class="p-1.5">¥${Math.round(annLiv*dFactor).toLocaleString()}</td><td class="p-1.5">¥${(curRes.expArr[i] - Math.round(annLiv*dFactor) - (speDesc.length ? 0 : 0)).toLocaleString()}</td><td class="p-1.5 text-rose-600">${speDesc.length ? speDesc.join(', ') : '-'}</td><td class="p-1.5 font-bold text-emerald-900">¥${curRes.expArr[i].toLocaleString()}</td></tr>`;
+        astTbody.innerHTML += `<tr><td class="p-1.5">${item.year}年目(${item.age}歳)</td><td class="p-1.5 font-semibold ${netF>=0?'text-blue-600':'text-rose-600'}">${netF>=0?'+':''}¥${netF.toLocaleString()}</td><td class="p-1.5 font-bold ${curCash<safetyLimit?'text-rose-600 bg-rose-50':'text-emerald-700'}">¥${curCash.toLocaleString()}</td><td class="p-1.5 font-bold text-indigo-700">¥${curRes.nisaArr[i].toLocaleString()}</td><td class="p-1.5 font-bold text-blue-800">¥${curRes.totalArr[i].toLocaleString()}</td></tr>`;
       }
 
-      document.getElementById('kpiFinalAsset').innerText = '¥' + (totalData[totalData.length-1]/10000).toLocaleString() + '万円';
-      document.getElementById('kpiFinalNisa').innerText = '¥' + (nisaData[nisaData.length-1]/10000).toLocaleString() + '万円';
-      document.getElementById('kpiMinCash').innerText = '¥' + (minCash/10000).toLocaleString() + '万円';
-      document.getElementById('kpiMinCashYear').innerText = `到達: ${minCashYear}年目時点`;
-      document.getElementById('kpiTotalFlow').innerText = `手取: ¥${Math.round(totalEarned/10000).toLocaleString()}万 / 支出: ¥${Math.round(totalSpent/10000).toLocaleString()}万`;
+      // KPI更新
+      document.getElementById('kpiFinalAsset').innerText = '¥' + (curRes.totalArr[curRes.totalArr.length-1]/10000).toLocaleString() + '万円';
+      document.getElementById('kpiFinalNisa').innerText = '¥' + (curRes.nisaArr[curRes.nisaArr.length-1]/10000).toLocaleString() + '万円';
+      document.getElementById('kpiMinCash').innerText = '¥' + (curRes.minC/10000).toLocaleString() + '万円';
+      document.getElementById('kpiMinCashYear').innerText = `到達: ${curRes.minCYear}年目時点`;
+      document.getElementById('kpiTotalFlow').innerText = `手取: ¥${Math.round(curRes.totEarned/10000).toLocaleString()}万 / 支出: ¥${Math.round(curRes.totSpent/10000).toLocaleString()}万`;
 
       const alertEl = document.getElementById('safetyAlertBanner');
       if (safetyAlertYears.length > 0) {
@@ -770,121 +915,86 @@
         <div><strong>初任給:</strong> ¥${Number(document.getElementById('startingSalary').value).toLocaleString()}</div>
         <div><strong>ベア率:</strong> ${isAutoBear ? (bearRate*100).toFixed(1)+'%/年' : '無効'}</div>
         <div><strong>防衛資金:</strong> ¥${safetyLimit/10000}万円</div>
-        <div><strong>インフレ率:</strong> ${(inflation*100).toFixed(1)}%</div>
       `;
 
+      // 比較シナリオの計算（選択されている場合）
+      const compareId = document.getElementById('compareScenarioSelect').value;
+      let compareDatasets = [];
+      if (compareId !== "none" && allScenariosMap[compareId]) {
+        const cData = allScenariosMap[compareId];
+        const compRes = runSimCalculation(
+          cData.salaryMaster || salaryMaster,
+          cData.phases || phases,
+          cData.customEvents || customEvents,
+          cData.nisaBlocks || nisaBlocks,
+          calcYears,
+          cData.bonusMonths || 6.0,
+          (cData.bearRate || 0)/100,
+          cData.toggleAutoBear || false,
+          inflation
+        );
+        compareDatasets = [
+          { label: `比較[${cData.scenarioName}] 総資産`, data: compRes.totalArr, borderColor: '#f59e0b', borderDash: [6, 4], fill: false, tension: 0.2 },
+          { label: `比較[${cData.scenarioName}] 手元現金`, data: compRes.cashArr, borderColor: '#ef4444', borderDash: [3, 3], fill: false }
+        ];
+      }
+
+      // チャート1: 資産推移
       if (assetChart) assetChart.destroy();
       assetChart = new Chart(document.getElementById('assetChart').getContext('2d'), {
         type: 'line',
         data: {
           labels: labels,
           datasets: [
-            { label: '総純資産', data: totalData, borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.08)', fill: true, tension: 0.2 },
-            { label: '新NISA残高', data: nisaData, borderColor: '#4f46e5', borderDash: [4, 4], fill: false },
-            { label: '手元普通預金', data: cashData, borderColor: '#059669', fill: false }
+            { label: '総純資産', data: curRes.totalArr, borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.08)', fill: true, tension: 0.2 },
+            { label: '新NISA残高', data: curRes.nisaArr, borderColor: '#4f46e5', borderDash: [4, 4], fill: false },
+            { label: '手元普通預金', data: curRes.cashArr, borderColor: '#059669', fill: false },
+            ...compareDatasets
           ]
         },
         options: { responsive: true, maintainAspectRatio: false, scales: { y: { ticks: { callback: v => '¥' + (v/10000).toLocaleString() + '万' } } } }
       });
 
+      // チャート2: 収支
       if (cfChart) cfChart.destroy();
       cfChart = new Chart(document.getElementById('cashflowChart').getContext('2d'), {
         type: 'bar',
         data: {
           labels: labels,
           datasets: [
-            { label: '手取り収入', data: incomeData, backgroundColor: '#3b82f6' },
-            { label: '年間総支出', data: expenseData, backgroundColor: '#f43f5e' }
+            { label: '手取り収入', data: curRes.incArr, backgroundColor: '#3b82f6' },
+            { label: '年間総支出', data: curRes.expArr, backgroundColor: '#f43f5e' }
           ]
         },
         options: { responsive: true, maintainAspectRatio: false, scales: { y: { ticks: { callback: v => '¥' + (v/10000).toLocaleString() + '万' } } } }
       });
 
+      // チャート3: 使途割合
       if (ratioChart) ratioChart.destroy();
       ratioChart = new Chart(document.getElementById('ratioChart').getContext('2d'), {
         type: 'bar',
         data: {
           labels: labels,
           datasets: [
-            { label: '生活費%', data: ratioLiving, backgroundColor: '#10b981' },
-            { label: 'NISA投資%', data: ratioNisa, backgroundColor: '#6366f1' },
-            { label: '特別支出%', data: ratioSpecial, backgroundColor: '#f43f5e' },
-            { label: '純預金増加%', data: ratioSavings, backgroundColor: '#3b82f6' }
+            { label: '生活費%', data: curRes.rLiving, backgroundColor: '#10b981' },
+            { label: 'NISA投資%', data: curRes.rNisa, backgroundColor: '#6366f1' },
+            { label: '特別支出%', data: curRes.rSpecial, backgroundColor: '#f43f5e' },
+            { label: '純預金増加%', data: curRes.rSavings, backgroundColor: '#3b82f6' }
           ]
         },
         options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true, max: 100 } } }
       });
 
+      // チャート4: 累計パイ
       if (pieChart) pieChart.destroy();
       pieChart = new Chart(document.getElementById('pieChart').getContext('2d'), {
         type: 'doughnut',
         data: {
           labels: ['生活費計', 'NISA投資計', '特別支出計'],
-          datasets: [{ data: [sumLiving, sumNisa, sumSpecial], backgroundColor: ['#10b981', '#6366f1', '#f43f5e'] }]
+          datasets: [{ data: [curRes.sLiv, curRes.sNis, curRes.sSpe], backgroundColor: ['#10b981', '#6366f1', '#f43f5e'] }]
         },
         options: { responsive: true, maintainAspectRatio: false }
       });
-    }
-
-    async function saveToCloud() {
-      const user = auth.currentUser;
-      if (!user) return;
-      document.getElementById('syncStatus').innerText = "☁️ 保存中...";
-      const data = {
-        calcYears: document.getElementById('calcYears').value,
-        startingSalary: document.getElementById('startingSalary').value,
-        bearRate: document.getElementById('bearRate').value,
-        toggleAutoBear: document.getElementById('toggleAutoBear').checked,
-        toggleAutoSlide: document.getElementById('toggleAutoSlide').checked,
-        bonusMonths: document.getElementById('bonusMonths').value,
-        safetyCash: document.getElementById('safetyCash').value,
-        inflationRate: document.getElementById('inflationRate').value,
-        nisaBlocks: nisaBlocks,
-        salaryMaster: salaryMaster,
-        phases: phases,
-        customEvents: customEvents,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-      try {
-        await db.collection('user_simulations').doc(user.uid).set(data);
-        document.getElementById('syncStatus').innerText = "☁️ 同期完了 (" + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) + ")";
-        alert("クラウドへ正常に保存されました！");
-      } catch(e) {
-        alert("保存に失敗しました: " + e.message);
-        document.getElementById('syncStatus').innerText = "⚠️ 保存失敗";
-      }
-    }
-
-    async function loadFromCloud() {
-      const user = auth.currentUser;
-      if (!user) return;
-      document.getElementById('syncStatus').innerText = "☁️ 読込中...";
-      try {
-        const doc = await db.collection('user_simulations').doc(user.uid).get();
-        if (doc.exists) {
-          const d = doc.data();
-          if (d.calcYears) document.getElementById('calcYears').value = d.calcYears;
-          if (d.startingSalary) document.getElementById('startingSalary').value = d.startingSalary;
-          if (d.bearRate) document.getElementById('bearRate').value = d.bearRate;
-          if (d.toggleAutoBear !== undefined) document.getElementById('toggleAutoBear').checked = d.toggleAutoBear;
-          if (d.toggleAutoSlide !== undefined) document.getElementById('toggleAutoSlide').checked = d.toggleAutoSlide;
-          if (d.bonusMonths) document.getElementById('bonusMonths').value = d.bonusMonths;
-          if (d.safetyCash) document.getElementById('safetyCash').value = d.safetyCash;
-          if (d.inflationRate) document.getElementById('inflationRate').value = d.inflationRate;
-          if (d.nisaBlocks) nisaBlocks = d.nisaBlocks;
-          if (d.salaryMaster) salaryMaster = d.salaryMaster;
-          if (d.phases) phases = d.phases;
-          if (d.customEvents) customEvents = d.customEvents;
-        }
-        renderNisaBlocks();
-        renderSalaryEditor();
-        renderPhaseList();
-        renderEventList();
-        calculate();
-        document.getElementById('syncStatus').innerText = "☁️ 同期完了";
-      } catch(e) {
-        console.error(e);
-      }
     }
   </script>
 </body>
