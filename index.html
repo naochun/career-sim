@@ -34,7 +34,7 @@
     <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 text-center max-w-sm w-full">
       <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">🔒</div>
       <h2 class="text-xl font-bold text-slate-900 mb-2">キャリア＆資産シミュレーター</h2>
-      <p class="text-xs text-slate-500 mb-6">許可されたGoogleアカウントでログインすると、マルチデバイス同期・複数シナリオ管理が利用可能になります。</p>
+      <p class="text-xs text-slate-500 mb-6">Googleアカウントでログインして利用を開始します。</p>
       <button onclick="loginWithGoogle()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 px-4 rounded-xl shadow flex items-center justify-center gap-2 text-sm transition">
         <span>Googleでサインイン</span>
       </button>
@@ -364,17 +364,11 @@
 
     auth.onAuthStateChanged(user => {
       if (user) {
-        if (user.email === "naochun21@gmail.com") {
-          document.getElementById('authScreen').classList.add('hidden');
-          document.getElementById('appScreen').classList.remove('hidden');
-          // 画面表示と同時に即座にレンダリング＆計算を実行
-          renderAllEditors();
-          calculate();
-          initScenarioManager();
-        } else {
-          alert("アクセス権限のないアカウントです: " + user.email);
-          auth.signOut();
-        }
+        document.getElementById('authScreen').classList.add('hidden');
+        document.getElementById('appScreen').classList.remove('hidden');
+        renderAllEditors();
+        calculate();
+        initScenarioManager();
       } else {
         document.getElementById('authScreen').classList.remove('hidden');
         document.getElementById('appScreen').classList.add('hidden');
@@ -482,16 +476,20 @@
       try {
         const snapshot = await db.collection('user_simulations').doc(user.uid).collection('scenarios').get();
         allScenariosMap = {};
-        if (snapshot.empty) {
-          await saveCurrentScenario("default", "標準プラン");
-        } else {
+        if (!snapshot.empty) {
           snapshot.forEach(doc => { allScenariosMap[doc.id] = doc.data(); });
+          updateScenarioDropdowns();
+          loadScenarioData(currentScenarioId);
+        } else {
+          allScenariosMap["default"] = getCurrentFormData("標準プラン");
+          updateScenarioDropdowns();
         }
-        updateScenarioDropdowns();
-        loadScenarioData(currentScenarioId);
+        document.getElementById('syncStatus').innerText = "☁️ 同期完了";
       } catch (err) {
-        console.error("Firestore init error:", err);
-        document.getElementById('syncStatus').innerText = "☁️ オフライン同期";
+        console.warn("Firestore access error:", err);
+        document.getElementById('syncStatus').innerText = "☁️ ローカル動作中";
+        allScenariosMap["default"] = getCurrentFormData("標準プラン");
+        updateScenarioDropdowns();
       }
     }
 
@@ -548,18 +546,19 @@
         updateScenarioDropdowns();
         alert(`シナリオ「${data.scenarioName}」をクラウドに保存しました！`);
       } catch (e) {
-        alert("保存エラー: " + e.message);
-        document.getElementById('syncStatus').innerText = "⚠️ 保存失敗";
+        alert("クラウド保存に失敗しました（権限エラー等のためローカルに反映します）: " + e.message);
+        allScenariosMap[targetId] = data;
+        updateScenarioDropdowns();
+        document.getElementById('syncStatus').innerText = "⚠️ 保存失敗(ローカル保存)";
       }
     }
 
     async function saveAsNewScenario() {
-      const name = prompt("新しいシナリオ名を入力してください（例: 車買替プラン、転職想定など）:");
+      const name = prompt("新しいシナリオ名を入力してください:");
       if (!name) return;
       const newId = "scenario_" + Date.now();
       currentScenarioId = newId;
       await saveCurrentScenario(newId, name);
-      updateScenarioDropdowns();
     }
 
     async function deleteScenario() {
@@ -571,14 +570,14 @@
 
       try {
         await getScenarioDocRef(currentScenarioId).delete();
-        delete allScenariosMap[currentScenarioId];
-        currentScenarioId = Object.keys(allScenariosMap)[0];
-        updateScenarioDropdowns();
-        loadScenarioData(currentScenarioId);
-        alert("シナリオを削除しました。");
       } catch (e) {
-        alert("削除エラー: " + e.message);
+        console.warn(e);
       }
+      delete allScenariosMap[currentScenarioId];
+      currentScenarioId = Object.keys(allScenariosMap)[0];
+      updateScenarioDropdowns();
+      loadScenarioData(currentScenarioId);
+      alert("シナリオを削除しました。");
     }
 
     function onScenarioChange() {
@@ -605,7 +604,6 @@
       }
       renderAllEditors();
       calculate();
-      document.getElementById('syncStatus').innerText = "☁️ 同期完了";
     }
 
     function renderAllEditors() {
@@ -1038,12 +1036,6 @@
         });
       }
     }
-
-    // 初回ロード保証
-    window.addEventListener('DOMContentLoaded', () => {
-      renderAllEditors();
-      calculate();
-    });
   </script>
 </body>
 </html>
