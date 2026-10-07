@@ -11,94 +11,86 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <style>
+    /* ==========================================================
+       印刷・PDF専用スタイル（Web画面とは完全分離した帳票レイアウト）
+       ========================================================== */
     @media print {
       @page {
         size: A4 portrait;
-        margin: 8mm 10mm;
+        margin: 10mm 12mm;
       }
       *, *::before, *::after {
         box-sizing: border-box !important;
       }
       body {
-        background-color: #ffffff !important;
+        background: #ffffff !important;
+        color: #0f172a !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+        font-size: 8.5px !important;
         padding: 0 !important;
         margin: 0 !important;
-        color: #0f172a !important;
-        font-size: 10px !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
       }
-      .no-print { display: none !important; }
-      .print-only { display: block !important; }
-      
-      /* 設定タブは印刷から完全除外 */
-      #inputTabContent { display: none !important; }
-      #resultTabContent { display: block !important; }
 
-      /* 改ページ制御 */
-      .page-break-before {
+      /* Web画面（入力フォーム、ボタン、ヘッダー、スクロール枠など）は印刷から100%除外 */
+      #authScreen, #appScreen, .no-print {
+        display: none !important;
+      }
+
+      /* PDF専用のレポートビューのみを表示 */
+      #pdfReportView {
+        display: block !important;
+        width: 100% !important;
+      }
+
+      /* ページ区切り制御 */
+      .pdf-page-break {
         page-break-before: always !important;
         break-before: page !important;
       }
-      .avoid-break {
+      .pdf-avoid-break {
         page-break-inside: avoid !important;
         break-inside: avoid !important;
       }
 
-      /* カードと枠線 */
-      .card {
-        border: 1px solid #cbd5e1 !important;
-        box-shadow: none !important;
-        border-radius: 6px !important;
-        margin-bottom: 6px !important;
-        padding: 6px 8px !important;
-        background-color: #ffffff !important;
-        overflow: visible !important;
-      }
-
-      /* テーブルのA4幅完全収容 */
-      table {
+      /* 印刷用テーブル */
+      .pdf-table {
         width: 100% !important;
-        font-size: 7.5px !important;
         border-collapse: collapse !important;
+        font-size: 7.5px !important;
         table-layout: fixed !important;
       }
-      th, td {
-        padding: 2.5px 2px !important;
-        border-bottom: 1px solid #e2e8f0 !important;
-        word-break: break-all !important;
+      .pdf-table th, .pdf-table td {
+        padding: 2.5px 3px !important;
+        border-bottom: 1px solid #cbd5e1 !important;
         white-space: nowrap !important;
         overflow: hidden !important;
         text-overflow: ellipsis !important;
       }
-      th {
+      .pdf-table th {
+        background-color: #f1f5f9 !important;
+        color: #1e293b !important;
         font-weight: 700 !important;
       }
+    }
 
-      /* グラフエリアの印刷用2×2固定 */
-      .print-chart-grid {
-        display: grid !important;
-        grid-template-columns: 1fr 1fr !important;
-        gap: 8px !important;
-      }
-      .chart-container {
-        position: relative !important;
-        height: 165px !important;
-        width: 100% !important;
-      }
-
-      /* サマリーカードの印刷用レイアウト */
-      .print-kpi-grid {
-        display: grid !important;
-        grid-template-columns: repeat(4, 1fr) !important;
-        gap: 6px !important;
+    /* Web画面（通常画面）ではPDF専用レポートビューは非表示 */
+    @media screen {
+      #pdfReportView {
+        display: none !important;
       }
     }
-    .print-only { display: none; }
+
+    /* Web画面用の補助 */
     .chart-container { position: relative; height: 260px; width: 100%; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 p-3 md:p-6 font-sans">
+
+  <!-- ========================================================
+       1. Webアプリ操作画面 (ログイン＆シミュレーター本体)
+       ======================================================== -->
 
   <!-- ログイン画面 -->
   <div id="authScreen" class="min-h-[80vh] flex flex-col items-center justify-center space-y-4">
@@ -115,37 +107,29 @@
 
   <!-- シミュレーター本体 -->
   <div id="appScreen" class="max-w-7xl mx-auto space-y-4 hidden">
-    <!-- 印刷用ヘッダー -->
-    <div class="print-only border-b border-slate-300 pb-1.5 mb-2">
-      <div class="flex justify-between items-baseline">
-        <h1 class="text-base font-bold text-slate-900">ライフプラン＆資産形成シミュレーション レポート</h1>
-        <span class="text-[9px] text-slate-500">出力日時: <span id="printDate"></span></span>
-      </div>
-      <p class="text-[9px] text-slate-600 mt-0.5">対象シナリオ: <span id="printScenarioName" class="font-bold text-slate-900">標準プラン</span></p>
-    </div>
-
-    <!-- Web操作用ヘッダー -->
-    <header class="no-print bg-white p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <!-- Webヘッダー -->
+    <header class="bg-white p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
       <div>
         <div class="flex items-center gap-2">
           <h1 class="text-lg md:text-xl font-bold text-slate-900">キャリア＆資産形成シミュレーター</h1>
           <span id="syncStatus" class="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium">☁️ 同期完了</span>
         </div>
-        <p class="text-xs text-slate-500 mt-0.5">複数シナリオ保存 / A/B比較 / 臨時収入対応 / 防衛資金対応</p>
+        <p class="text-xs text-slate-500 mt-0.5">複数シナリオ保存 / A/B比較 / 臨時収入対応 / 高品位PDFレポート出力</p>
       </div>
       <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
         <button onclick="toggleInflation()" id="inflationToggleBtn" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-3 rounded-lg border">
           表示: 名目額
         </button>
-        <button onclick="prepareAndPrint()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs md:text-sm font-semibold py-2 px-3 rounded-lg shadow transition">
-          PDF出力
+        <button onclick="prepareAndPrint()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs md:text-sm font-bold py-2 px-4 rounded-lg shadow transition flex items-center gap-1.5">
+          <span>📄</span>
+          <span>PDFレポート出力</span>
         </button>
         <button onclick="logout()" class="text-xs text-slate-400 hover:text-slate-600 px-1 py-1">ログアウト</button>
       </div>
     </header>
 
     <!-- シナリオ管理バー -->
-    <div class="no-print bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 p-3.5 rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs">
+    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 p-3.5 rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs">
       <div class="flex flex-wrap items-center gap-2">
         <span class="font-bold text-blue-900 flex items-center gap-1">📁 シナリオ選択:</span>
         <select id="scenarioSelect" onchange="onScenarioChange()" class="p-1.5 border rounded-lg bg-white font-semibold text-slate-800 min-w-[160px] shadow-sm">
@@ -175,8 +159,8 @@
       <span id="safetyAlertText">生活防衛資金を下回る年次が存在します。</span>
     </div>
 
-    <!-- メインタブ切り替えバー（Web表示用） -->
-    <div class="no-print flex border-b border-slate-200 gap-2">
+    <!-- メインタブ切り替えバー -->
+    <div class="flex border-b border-slate-200 gap-2">
       <button id="tabBtnResult" onclick="switchMainTab('result')" class="py-2.5 px-5 font-bold text-sm border-b-2 border-blue-600 text-blue-600 transition flex items-center gap-1.5">
         <span>📊</span> シミュレーション結果・グラフ
       </button>
@@ -186,67 +170,54 @@
     </div>
 
     <!-- ==================== 出力・結果タブ ==================== -->
-    <div id="resultTabContent" class="space-y-4">
+    <div id="resultTabContent" class="space-y-5">
       <!-- 重要サマリー KPI カード -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 print-kpi-grid avoid-break">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div class="card bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
           <span class="text-[11px] text-slate-500 font-medium">最終到達 総純資産</span>
-          <div id="kpiFinalAsset" class="text-base md:text-xl font-bold text-blue-600 mt-0.5">0万円</div>
+          <div id="kpiFinalAsset" class="text-base md:text-xl font-bold text-blue-600 mt-1">0万円</div>
           <span id="kpiFinalYearText" class="text-[10px] text-slate-400">計算終了年時点</span>
         </div>
         <div class="card bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
           <span class="text-[11px] text-slate-500 font-medium">最終到達 運用残高(NISA)</span>
-          <div id="kpiFinalNisa" class="text-base md:text-xl font-bold text-indigo-600 mt-0.5">0万円</div>
+          <div id="kpiFinalNisa" class="text-base md:text-xl font-bold text-indigo-600 mt-1">0万円</div>
           <span class="text-[10px] text-slate-400">複利運用込み評価額</span>
         </div>
         <div class="card bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
           <span class="text-[11px] text-slate-500 font-medium">期間内 最低普通預金</span>
-          <div id="kpiMinCash" class="text-base md:text-xl font-bold text-emerald-600 mt-0.5">0万円</div>
+          <div id="kpiMinCash" class="text-base md:text-xl font-bold text-emerald-600 mt-1">0万円</div>
           <span id="kpiMinCashYear" class="text-[10px] text-slate-400">キャッシュの底</span>
         </div>
         <div class="card bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
           <span class="text-[11px] text-slate-500 font-medium">生涯手取り vs 総支出 (消費)</span>
-          <div id="kpiTotalFlow" class="text-base md:text-xl font-bold text-slate-700 mt-0.5 whitespace-nowrap">0万円 / 0万円</div>
+          <div id="kpiTotalFlow" class="text-base md:text-xl font-bold text-slate-700 mt-1 whitespace-nowrap">0万円 / 0万円</div>
           <span id="kpiSavingsRate" class="text-[10px] text-blue-600 font-semibold">平均貯蓄余力: 0%</span>
         </div>
       </div>
 
-      <!-- 印刷用サマリー -->
-      <div class="print-only card bg-white p-2 rounded border border-slate-300 text-xs avoid-break">
-        <h3 class="font-bold text-slate-900 border-b pb-0.5 mb-1 text-[10px]">【シミュレーション前提条件】</h3>
-        <div class="grid grid-cols-4 gap-1 text-[8.5px] mb-1" id="printConditionSummary"></div>
-        <div class="border-t pt-1">
-          <strong class="text-[8.5px] block mb-0.5 text-slate-800">各フェーズの支出内訳:</strong>
-          <div id="printPhasesSummary" class="grid grid-cols-2 gap-1.5 text-[8px] text-slate-700"></div>
-        </div>
-      </div>
-
-      <!-- グラフエリア (印刷時は2x2で1ページ目下部に綺麗に収容) -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 card bg-white p-3 md:p-4 rounded-xl shadow-sm border border-slate-200 avoid-break print-chart-grid">
+      <!-- グラフエリア (Web画面用 2x2) -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 card bg-white p-4 md:p-5 rounded-xl shadow-sm border border-slate-200">
         <div>
-          <h3 class="font-bold text-xs mb-1 text-slate-800">■ 資産推移（純資産・現金・NISA・比較）</h3>
+          <h3 class="font-bold text-xs md:text-sm mb-2 text-slate-800">■ 資産推移（純資産・現金・NISA・比較）</h3>
           <div class="chart-container"><canvas id="assetChart"></canvas></div>
         </div>
         <div>
-          <h3 class="font-bold text-xs mb-1 text-slate-800">■ 年間収支（手取り＋税社保＝額面 vs 年間消費支出）</h3>
+          <h3 class="font-bold text-xs md:text-sm mb-2 text-slate-800">■ 年間収支（手取り＋税社保＝額面 vs 年間消費支出）</h3>
           <div class="chart-container"><canvas id="cashflowChart"></canvas></div>
         </div>
         <div>
-          <h3 class="font-bold text-xs mb-1 text-slate-800">■ 手取り収入の使途バランス割合推移 (%)</h3>
+          <h3 class="font-bold text-xs md:text-sm mb-2 text-slate-800">■ 手取り収入の使途バランス割合推移 (%)</h3>
           <div class="chart-container"><canvas id="ratioChart"></canvas></div>
         </div>
         <div>
-          <h3 class="font-bold text-xs mb-1 text-slate-800">■ 期間累計・支出＆貯金使途別シェア</h3>
+          <h3 class="font-bold text-xs md:text-sm mb-2 text-slate-800">■ 期間累計・支出＆貯金使途別シェア</h3>
           <div class="chart-container flex items-center justify-center"><canvas id="pieChart"></canvas></div>
         </div>
       </div>
 
-      <!-- 印刷時の2ページ目区切り -->
-      <div class="page-break-before"></div>
-
       <!-- テーブル1: 収入詳細 -->
-      <div class="card bg-white p-3.5 rounded-xl border border-slate-200 overflow-x-auto avoid-break">
-        <h3 class="font-bold text-xs md:text-sm mb-1.5 text-blue-700">■ 収入詳細分類表</h3>
+      <div class="card bg-white p-4 rounded-xl border border-slate-200 overflow-x-auto">
+        <h3 class="font-bold text-xs md:text-sm mb-2 text-blue-700">■ 収入詳細分類表</h3>
         <table class="w-full text-left text-xs border-collapse">
           <thead>
             <tr class="bg-blue-50 border-b text-blue-900">
@@ -265,8 +236,8 @@
       </div>
 
       <!-- テーブル2: 支出詳細 -->
-      <div class="card bg-white p-3.5 rounded-xl border border-slate-200 overflow-x-auto avoid-break">
-        <h3 class="font-bold text-xs md:text-sm mb-1.5 text-emerald-700">■ 支出詳細分類表（消費支出）</h3>
+      <div class="card bg-white p-4 rounded-xl border border-slate-200 overflow-x-auto">
+        <h3 class="font-bold text-xs md:text-sm mb-2 text-emerald-700">■ 支出詳細分類表（消費支出）</h3>
         <table class="w-full text-left text-xs border-collapse">
           <thead>
             <tr class="bg-emerald-50 border-b text-emerald-900">
@@ -283,8 +254,8 @@
       </div>
 
       <!-- テーブル3: 資産推移 -->
-      <div class="card bg-white p-3.5 rounded-xl border border-slate-200 overflow-x-auto avoid-break">
-        <h3 class="font-bold text-xs md:text-sm mb-1.5 text-purple-700">■ 資産推移詳細表</h3>
+      <div class="card bg-white p-4 rounded-xl border border-slate-200 overflow-x-auto">
+        <h3 class="font-bold text-xs md:text-sm mb-2 text-purple-700">■ 資産推移詳細表</h3>
         <table class="w-full text-left text-xs border-collapse">
           <thead>
             <tr class="bg-purple-50 border-b text-purple-900">
@@ -446,6 +417,158 @@
     </div>
   </div>
 
+  <!-- ========================================================
+       2. オフスクリーン描画用ステージ (PDFレポート用チャート生成用)
+       ======================================================== -->
+  <div id="offscreenChartStaging" style="position: fixed; left: -9999px; top: 0; width: 780px; pointer-events: none; opacity: 0; z-index: -100;">
+    <canvas id="offscreenAssetChart" width="760" height="230"></canvas>
+    <canvas id="offscreenCfChart" width="760" height="200"></canvas>
+    <canvas id="offscreenRatioChart" width="370" height="190"></canvas>
+    <canvas id="offscreenPieChart" width="370" height="190"></canvas>
+  </div>
+
+  <!-- ========================================================
+       3. PDF専用 印刷レポート (A4専用帳票レイアウト)
+       ======================================================== -->
+  <div id="pdfReportView">
+    <!-- ===== PAGE 1: 診断エグゼクティブサマリー ＆ 長期資産推移 ===== -->
+    <div class="pdf-page">
+      <!-- レポート表紙ヘッダー -->
+      <div class="flex justify-between items-end border-b-2 border-slate-900 pb-2 mb-2.5">
+        <div>
+          <div class="text-[8.5px] font-bold text-blue-600 tracking-widest uppercase">Financial Life Plan Report</div>
+          <h1 class="text-lg font-black text-slate-900 leading-tight">ライフプラン＆キャリア資産形成 シミュレーション報告書</h1>
+        </div>
+        <div class="text-right text-[8px] text-slate-600 space-y-0.5">
+          <div>対象シナリオ: <span id="pdfScenarioName" class="font-bold text-slate-900">標準プラン</span></div>
+          <div>作成日: <span id="pdfPrintDate"></span></div>
+          <div>表示基準: <span id="pdfValuationMode" class="font-semibold">名目額</span></div>
+        </div>
+      </div>
+
+      <!-- 診断サマリー KPI ボックス (4項目) -->
+      <div class="grid grid-cols-4 gap-2 mb-2.5">
+        <div class="p-2 rounded border border-blue-200 bg-blue-50/40">
+          <div class="text-[8.5px] font-bold text-blue-800">最終到達 総純資産</div>
+          <div id="pdfKpiAsset" class="text-base font-black text-blue-700 mt-0.5">0万円</div>
+          <div class="text-[7.5px] text-slate-500" id="pdfKpiAssetYear">計算終了年時点 到達額</div>
+        </div>
+        <div class="p-2 rounded border border-indigo-200 bg-indigo-50/40">
+          <div class="text-[8.5px] font-bold text-indigo-800">最終到達 NISA残高</div>
+          <div id="pdfKpiNisa" class="text-base font-black text-indigo-700 mt-0.5">0万円</div>
+          <div class="text-[7.5px] text-slate-500">複利運用込み評価額</div>
+        </div>
+        <div class="p-2 rounded border border-emerald-200 bg-emerald-50/40">
+          <div class="text-[8.5px] font-bold text-emerald-800">最低普通預金残高</div>
+          <div id="pdfKpiCash" class="text-base font-black text-emerald-700 mt-0.5">0万円</div>
+          <div class="text-[7.5px] text-slate-500" id="pdfKpiCashYear">キャッシュの底</div>
+        </div>
+        <div class="p-2 rounded border border-slate-300 bg-slate-50/60">
+          <div class="text-[8.5px] font-bold text-slate-700">生涯手取り vs 総支出</div>
+          <div id="pdfKpiFlow" class="text-xs font-black text-slate-800 mt-1 whitespace-nowrap">0万 / 0万</div>
+          <div class="text-[7.5px] text-blue-700 font-bold mt-0.5" id="pdfKpiSavingsRate">平均貯蓄余力: 0%</div>
+        </div>
+      </div>
+
+      <!-- 前提条件サマリー -->
+      <div class="mb-2.5 p-2 rounded border border-slate-200 bg-slate-50/70 text-[8px]">
+        <div class="font-bold text-slate-800 border-b border-slate-200 pb-0.5 mb-1 text-[8.5px]">【シミュレーション共通前提条件】</div>
+        <div class="grid grid-cols-6 gap-2 text-slate-700" id="pdfCondGrid"></div>
+      </div>
+
+      <!-- グラフ1: 資産形成推移 (全幅 横幅760pxで文字被りを完全解消) -->
+      <div class="border border-slate-200 rounded p-2 bg-white">
+        <div class="flex justify-between items-center mb-1">
+          <div class="font-bold text-[10px] text-slate-900">■ 資産形成推移（総純資産・新NISA残高・手元普通預金）</div>
+          <div class="text-[7.5px] text-slate-500">※全幅表示により年次ラベル・推移曲線を最適化</div>
+        </div>
+        <div class="w-full flex justify-center">
+          <img id="pdfAssetChartImg" class="w-full h-auto" alt="資産推移グラフ">
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PAGE 2: 収支構造・使途分析 ＆ ライフプラン内訳 ===== -->
+    <div class="pdf-page pdf-page-break">
+      <div class="border-b border-slate-300 pb-1 mb-2 flex justify-between items-baseline">
+        <div class="font-bold text-[11px] text-slate-800">■ キャッシュフロー構造 ＆ ライフプラン支出内訳</div>
+        <div class="text-[7.5px] text-slate-500">ライフプラン＆キャリア資産形成 シミュレーション報告書</div>
+      </div>
+
+      <!-- グラフ2: 年間収支推移 (全幅) -->
+      <div class="border border-slate-200 rounded p-2 mb-2 bg-white">
+        <div class="font-bold text-[10px] text-slate-900 mb-1">■ 年間収支推移（手取り収入＋税社保＝額面 vs 年間消費支出）</div>
+        <div class="w-full flex justify-center">
+          <img id="pdfCfChartImg" class="w-full h-auto" alt="年間収支グラフ">
+        </div>
+      </div>
+
+      <!-- グラフ3 & 4 (2カラム配置) -->
+      <div class="grid grid-cols-2 gap-2 mb-2">
+        <div class="border border-slate-200 rounded p-2 bg-white">
+          <div class="font-bold text-[9px] text-slate-900 mb-1">■ 手取り使途バランス割合推移 (%)</div>
+          <img id="pdfRatioChartImg" class="w-full h-auto" alt="使途バランスグラフ">
+        </div>
+        <div class="border border-slate-200 rounded p-2 bg-white">
+          <div class="font-bold text-[9px] text-slate-900 mb-1">■ 期間累計・支出＆貯金使途シェア</div>
+          <img id="pdfPieChartImg" class="w-full h-auto" alt="使途シェア円グラフ">
+        </div>
+      </div>
+
+      <!-- ライフプラン内訳（フェーズ別生活費 ＆ 特別支出・臨時収入） -->
+      <div class="border border-slate-200 rounded p-2 bg-white text-[8px] space-y-2">
+        <div>
+          <div class="font-bold text-slate-900 border-b pb-0.5 mb-1 text-[8.5px]">【ライフステージ別 生活費内訳】</div>
+          <div id="pdfPhasesTable" class="grid grid-cols-2 gap-2"></div>
+        </div>
+        <div class="border-t pt-1.5 grid grid-cols-2 gap-2">
+          <div>
+            <div class="font-bold text-slate-900 mb-0.5 text-[8.5px]">【特別支出・ローン計画】</div>
+            <div id="pdfEventsList" class="space-y-0.5 text-slate-700"></div>
+          </div>
+          <div>
+            <div class="font-bold text-slate-900 mb-0.5 text-[8.5px]">【臨時収入計画】</div>
+            <div id="pdfExtraIncomesList" class="space-y-0.5 text-slate-700"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PAGE 3: 年次別詳細シミュレーション諸元表（完全展開帳票） ===== -->
+    <div class="pdf-page pdf-page-break">
+      <div class="border-b border-slate-300 pb-1 mb-2 flex justify-between items-baseline">
+        <div class="font-bold text-[11px] text-slate-800">■ 年次別 シミュレーション詳細データ一覧（全期間展開帳票）</div>
+        <div class="text-[7.5px] text-slate-500">※スクロールなし・全年次完全印字</div>
+      </div>
+
+      <div class="border border-slate-300 rounded overflow-hidden">
+        <table class="pdf-table">
+          <thead>
+            <tr>
+              <th style="width: 10%;">年次(年齢)</th>
+              <th style="width: 12%;">等級名</th>
+              <th style="width: 9%; text-align: right;">額面年収</th>
+              <th style="width: 9%; text-align: right; color: #1e40af;">手取り年収</th>
+              <th style="width: 9%; text-align: right; color: #b91c1c;">年間総支出</th>
+              <th style="width: 9%; text-align: right; color: #2563eb;">純貯蓄余力</th>
+              <th style="width: 9%; text-align: right; color: #047857;">預金増減</th>
+              <th style="width: 11%; text-align: right; color: #065f46;">普通預金残高</th>
+              <th style="width: 11%; text-align: right; color: #4338ca;">NISA残高</th>
+              <th style="width: 11%; text-align: right; color: #1e3a8a;">総純資産</th>
+            </tr>
+          </thead>
+          <tbody id="pdfFullDataTableBody"></tbody>
+        </table>
+      </div>
+
+      <!-- 帳票注記 -->
+      <div class="mt-2 text-[7px] text-slate-500 leading-tight">
+        ※本報告書の試算結果は、入力された条件及び日本の現行税制・社会保険制度に基づくモデル試算であり、将来の昇給実績・税制改正・運用実績等を保証するものではありません。<br>
+        ※NISA残高は年利複利計算（各年末評価）です。普通預金残高は利息を考慮していません。
+      </div>
+    </div>
+  </div>
+
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyCTTsKxeUmgFYCbzbYJwur4LhXxxBIhm5g",
@@ -503,7 +626,7 @@
         inputEl.classList.add('hidden');
         btnResult.className = "py-2.5 px-5 font-bold text-sm border-b-2 border-blue-600 text-blue-600 transition flex items-center gap-1.5";
         btnInput.className = "py-2.5 px-5 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition flex items-center gap-1.5";
-        resizeAllCharts();
+        resizeScreenCharts();
       } else {
         resultEl.classList.add('hidden');
         inputEl.classList.remove('hidden');
@@ -512,19 +635,11 @@
       }
     }
 
-    function resizeAllCharts() {
+    function resizeScreenCharts() {
       if (assetChart) assetChart.resize();
       if (cfChart) cfChart.resize();
       if (ratioChart) ratioChart.resize();
       if (pieChart) pieChart.resize();
-    }
-
-    function prepareAndPrint() {
-      switchMainTab('result');
-      setTimeout(() => {
-        resizeAllCharts();
-        window.print();
-      }, 150);
     }
 
     const defaultNisaBlocks = [
@@ -742,7 +857,6 @@
     function loadScenarioData(id) {
       const d = allScenariosMap[id];
       if (d) {
-        document.getElementById('printScenarioName').innerText = d.scenarioName || "標準プラン";
         if (d.calcYears) document.getElementById('calcYears').value = d.calcYears;
         if (d.startingSalary) document.getElementById('startingSalary').value = d.startingSalary;
         if (d.bearRate) document.getElementById('bearRate').value = d.bearRate;
@@ -1187,36 +1301,6 @@
         calcYears, bonusMonths, bearRate, isAutoBear, inflation, globalNisaRate, extraIncomes
       );
 
-      // 印刷用サマリー条件
-      const printCond = document.getElementById('printConditionSummary');
-      if (printCond) {
-        printCond.innerHTML = `
-          <div><strong>計算年数:</strong> ${calcYears}年</div>
-          <div><strong>初任給:</strong> ¥${startSal.toLocaleString()}</div>
-          <div><strong>想定賞与:</strong> 年${bonusMonths}ヶ月</div>
-          <div><strong>NISA利回り:</strong> ${globalNisaRate}%/年</div>
-          <div><strong>生活防衛資金:</strong> ${(safetyLimit/10000).toLocaleString()}万円</div>
-          <div><strong>想定インフレ率:</strong> ${(inflation*100).toFixed(1)}%/年</div>
-          <div><strong>ベア自動適用:</strong> ${isAutoBear ? '有効 ('+(bearRate*100).toFixed(1)+'%)' : '無効'}</div>
-          <div><strong>表示基準:</strong> ${isRealValueMode ? '実質価値' : '名目額'}</div>
-        `;
-      }
-
-      const printPhases = document.getElementById('printPhasesSummary');
-      if (printPhases) {
-        let phtml = '';
-        phases.forEach(p => {
-          let itemsText = p.items ? p.items.map(it => `${it.name}: ¥${it.amount.toLocaleString()}(${it.type==='monthly'?'月':'年'})`).join(', ') : 'なし';
-          phtml += `
-            <div class="border-b border-slate-200 pb-0.5">
-              <span class="font-bold text-slate-800">${p.name} (${p.startYear}〜${p.endYear}年目):</span>
-              <span class="text-slate-600">${itemsText}</span>
-            </div>
-          `;
-        });
-        printPhases.innerHTML = phtml;
-      }
-
       const labels = [];
       const incTbody = document.getElementById('incomeTableBody');
       const expTbody = document.getElementById('expenseTableBody');
@@ -1345,9 +1429,6 @@
         }
       }
 
-      const pDate = document.getElementById('printDate');
-      if (pDate) pDate.innerText = new Date().toLocaleDateString('ja-JP');
-
       const compareId = document.getElementById('compareScenarioSelect')?.value || "none";
       let compareDatasets = [];
       if (compareId !== "none" && allScenariosMap[compareId]) {
@@ -1384,7 +1465,7 @@
         ];
       }
 
-      // グラフ1: 資産推移
+      // Web画面用 グラフ1: 資産推移
       const canvasAsset = document.getElementById('assetChart');
       if (canvasAsset && canvasAsset.offsetParent !== null) {
         if (assetChart) assetChart.destroy();
@@ -1410,7 +1491,7 @@
         });
       }
 
-      // グラフ2: 年間収支 (手取り＋税社保のスタックバー vs 消費支出バー)
+      // Web画面用 グラフ2: 年間収支
       const canvasCf = document.getElementById('cashflowChart');
       if (canvasCf && canvasCf.offsetParent !== null) {
         if (cfChart) cfChart.destroy();
@@ -1419,24 +1500,9 @@
           data: {
             labels: labels,
             datasets: [
-              {
-                label: '手取り収入',
-                data: curRes.incArr,
-                backgroundColor: '#3b82f6',
-                stack: 'income'
-              },
-              {
-                label: '税・社会保険料',
-                data: curRes.taxArr,
-                backgroundColor: '#10b981',
-                stack: 'income'
-              },
-              {
-                label: '年間消費支出',
-                data: curRes.expArr,
-                backgroundColor: '#f43f5e',
-                stack: 'expense'
-              }
+              { label: '手取り収入', data: curRes.incArr, backgroundColor: '#3b82f6', stack: 'income' },
+              { label: '税・社会保険料', data: curRes.taxArr, backgroundColor: '#10b981', stack: 'income' },
+              { label: '年間消費支出', data: curRes.expArr, backgroundColor: '#f43f5e', stack: 'expense' }
             ]
           },
           options: {
@@ -1445,16 +1511,13 @@
             animation: false,
             scales: {
               x: { stacked: true },
-              y: {
-                stacked: true,
-                ticks: { callback: v => (v/10000).toLocaleString() + '万円' }
-              }
+              y: { stacked: true, ticks: { callback: v => (v/10000).toLocaleString() + '万円' } }
             }
           }
         });
       }
 
-      // グラフ3: 使途バランス (超過対応＋100%基準線)
+      // Web画面用 グラフ3: 使途バランス
       const canvasRatio = document.getElementById('ratioChart');
       if (canvasRatio && canvasRatio.offsetParent !== null) {
         if (ratioChart) ratioChart.destroy();
@@ -1485,16 +1548,13 @@
             animation: false,
             scales: {
               x: { stacked: true },
-              y: {
-                stacked: true,
-                ticks: { callback: v => v + '%' }
-              }
+              y: { stacked: true, ticks: { callback: v => v + '%' } }
             }
           }
         });
       }
 
-      // グラフ4: 期間累計・支出＆貯金使途別シェア
+      // Web画面用 グラフ4: 期間累計シェア
       const canvasPie = document.getElementById('pieChart');
       if (canvasPie && canvasPie.offsetParent !== null) {
         if (pieChart) pieChart.destroy();
@@ -1538,6 +1598,327 @@
           }
         });
       }
+    }
+
+    /* ========================================================
+       4. PDF専用 レポート生成ロジック (印刷直前に実行)
+       ======================================================== */
+    let offAssetChart = null, offCfChart = null, offRatioChart = null, offPieChart = null;
+
+    function renderPdfReport() {
+      const calcYears = Math.min(40, Math.max(1, Number(document.getElementById('calcYears')?.value) || 10));
+      const startSal = Number(document.getElementById('startingSalary')?.value) || 340000;
+      const bonusMonths = Number(document.getElementById('bonusMonths')?.value) || 6.0;
+      const safetyLimit = (Number(document.getElementById('safetyCash')?.value) || 100) * 10000;
+      const inflation = (Number(document.getElementById('inflationRate')?.value) || 1.0) / 100;
+      const bearRate = (Number(document.getElementById('bearRate')?.value) || 0) / 100;
+      const isAutoBear = document.getElementById('toggleAutoBear')?.checked || false;
+      const globalNisaRate = document.getElementById('nisaGlobalRate')?.value || 5.0;
+
+      const curRes = runSimCalculation(
+        salaryMaster, phases, customEvents, nisaBlocks,
+        calcYears, bonusMonths, bearRate, isAutoBear, inflation, globalNisaRate, extraIncomes
+      );
+
+      // メタ情報の転記
+      document.getElementById('pdfScenarioName').innerText = allScenariosMap[currentScenarioId]?.scenarioName || "標準プラン";
+      document.getElementById('pdfPrintDate').innerText = new Date().toLocaleDateString('ja-JP');
+      document.getElementById('pdfValuationMode').innerText = isRealValueMode ? '実質価値(物価換算)' : '名目額';
+
+      // KPIカードの転記
+      const finalAssetVal = Math.round(curRes.totalArr[curRes.totalArr.length-1] / 10000);
+      const finalNisaVal = Math.round(curRes.nisaArr[curRes.nisaArr.length-1] / 10000);
+      const minCashVal = Math.round(curRes.minC / 10000);
+      const totalEarnedMan = Math.round(curRes.totEarned / 10000);
+      const totalExpenseMan = Math.round(curRes.totConsumption / 10000);
+      const savingsRate = curRes.totEarned > 0 ? (((curRes.totEarned - curRes.totConsumption) / curRes.totEarned) * 100).toFixed(1) : 0;
+
+      document.getElementById('pdfKpiAsset').innerText = `${(finalAssetVal < 0 ? '-' : '') + Math.abs(finalAssetVal).toLocaleString()}万円`;
+      document.getElementById('pdfKpiAssetYear').innerText = `${calcYears}年目時点 到達額`;
+      document.getElementById('pdfKpiNisa').innerText = `${finalNisaVal.toLocaleString()}万円`;
+      document.getElementById('pdfKpiCash').innerText = `${(minCashVal < 0 ? '-' : '') + Math.abs(minCashVal).toLocaleString()}万円`;
+      document.getElementById('pdfKpiCashYear').innerText = `到達: ${curRes.minCYear}年目時点`;
+      document.getElementById('pdfKpiFlow').innerText = `手取 ${totalEarnedMan.toLocaleString()}万 / 支出 ${totalExpenseMan.toLocaleString()}万`;
+      document.getElementById('pdfKpiSavingsRate').innerText = `平均貯蓄余力: ${savingsRate}%`;
+
+      // 前提条件の転記
+      document.getElementById('pdfCondGrid').innerHTML = `
+        <div><span class="text-slate-500">計算年数:</span> <strong>${calcYears}年</strong></div>
+        <div><span class="text-slate-500">初任給:</span> <strong>¥${startSal.toLocaleString()}</strong></div>
+        <div><span class="text-slate-500">想定賞与:</span> <strong>年${bonusMonths}ヶ月</strong></div>
+        <div><span class="text-slate-500">ベア率:</span> <strong>${isAutoBear ? (bearRate*100).toFixed(1)+'%' : '無効'}</strong></div>
+        <div><span class="text-slate-500">NISA利回り:</span> <strong>${globalNisaRate}%/年</strong></div>
+        <div><span class="text-slate-500">防衛資金:</span> <strong>${(safetyLimit/10000).toLocaleString()}万円</strong></div>
+      `;
+
+      // X軸ラベル生成
+      const labels = [];
+      for (let i = 0; i < calcYears; i++) {
+        const item = salaryMaster[i] || { year: i+1, age: 24+i };
+        labels.push(`${item.year}年目(${item.age}歳)`);
+      }
+
+      // 印刷用比較データ
+      const compareId = document.getElementById('compareScenarioSelect')?.value || "none";
+      let compareDatasets = [];
+      if (compareId !== "none" && allScenariosMap[compareId]) {
+        const cData = allScenariosMap[compareId];
+        const compRes = runSimCalculation(
+          cData.salaryMaster || salaryMaster,
+          cData.phases || phases,
+          cData.customEvents || customEvents,
+          cData.nisaBlocks || nisaBlocks,
+          calcYears,
+          cData.bonusMonths || 6.0,
+          (cData.bearRate || 0)/100,
+          cData.toggleAutoBear || false,
+          inflation,
+          cData.nisaGlobalRate || globalNisaRate,
+          cData.extraIncomes || []
+        );
+        compareDatasets = [
+          { label: `比較[${cData.scenarioName}] 総資産`, data: compRes.totalArr, borderColor: '#f59e0b', borderDash: [6, 4], fill: false, borderWidth: 2, pointRadius: 0 }
+        ];
+      }
+
+      // 1. オフスクリーン資産推移チャート（全幅 760px）
+      const cvsAsset = document.getElementById('offscreenAssetChart');
+      if (offAssetChart) offAssetChart.destroy();
+      offAssetChart = new Chart(cvsAsset.getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            { label: '総純資産', data: curRes.totalArr, borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.06)', fill: true, tension: 0.1, borderWidth: 2.5, pointRadius: calcYears > 15 ? 1 : 2.5 },
+            { label: '新NISA残高', data: curRes.nisaArr, borderColor: '#4f46e5', borderDash: [4, 4], fill: false, borderWidth: 2, pointRadius: calcYears > 15 ? 1 : 2.5 },
+            { label: '手元普通預金', data: curRes.cashArr, borderColor: '#059669', fill: false, borderWidth: 2, pointRadius: calcYears > 15 ? 1 : 2.5 },
+            ...compareDatasets
+          ]
+        },
+        options: {
+          responsive: false,
+          animation: false,
+          plugins: {
+            legend: { position: 'top', labels: { boxWidth: 12, font: { size: 9.5 } } }
+          },
+          scales: {
+            x: {
+              ticks: {
+                font: { size: calcYears > 15 ? 7.5 : 8.5 },
+                maxRotation: 0,
+                autoSkip: calcYears > 15,
+                maxTicksLimit: 15
+              },
+              grid: { display: false }
+            },
+            y: {
+              ticks: {
+                font: { size: 8 },
+                callback: v => (v/10000).toLocaleString() + '万'
+              }
+            }
+          }
+        }
+      });
+      document.getElementById('pdfAssetChartImg').src = cvsAsset.toDataURL('image/png');
+
+      // 2. オフスクリーン年間収支チャート（全幅 760px）
+      const cvsCf = document.getElementById('offscreenCfChart');
+      if (offCfChart) offCfChart.destroy();
+      offCfChart = new Chart(cvsCf.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            { label: '手取り収入', data: curRes.incArr, backgroundColor: '#3b82f6', stack: 'income', barPercentage: 0.75 },
+            { label: '税・社会保険料', data: curRes.taxArr, backgroundColor: '#10b981', stack: 'income', barPercentage: 0.75 },
+            { label: '年間消費支出', data: curRes.expArr, backgroundColor: '#f43f5e', stack: 'expense', barPercentage: 0.75 }
+          ]
+        },
+        options: {
+          responsive: false,
+          animation: false,
+          plugins: {
+            legend: { position: 'top', labels: { boxWidth: 12, font: { size: 9 } } }
+          },
+          scales: {
+            x: {
+              stacked: true,
+              ticks: {
+                font: { size: calcYears > 15 ? 7.5 : 8.5 },
+                maxRotation: 0,
+                autoSkip: calcYears > 15,
+                maxTicksLimit: 15
+              },
+              grid: { display: false }
+            },
+            y: {
+              stacked: true,
+              ticks: {
+                font: { size: 8 },
+                callback: v => (v/10000).toLocaleString() + '万'
+              }
+            }
+          }
+        }
+      });
+      document.getElementById('pdfCfChartImg').src = cvsCf.toDataURL('image/png');
+
+      // 3. オフスクリーン使途バランスチャート
+      const cvsRatio = document.getElementById('offscreenRatioChart');
+      if (offRatioChart) offRatioChart.destroy();
+      offRatioChart = new Chart(cvsRatio.getContext('2d'), {
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              type: 'line',
+              label: '手取100%線',
+              data: Array(calcYears).fill(100),
+              borderColor: '#dc2626',
+              borderWidth: 1.5,
+              borderDash: [5, 3],
+              pointRadius: 0,
+              fill: false,
+              order: -1
+            },
+            { type: 'bar', label: '生活費%', data: curRes.rLiving, backgroundColor: '#10b981', stack: 'r' },
+            { type: 'bar', label: '特別支出%', data: curRes.rSpecial, backgroundColor: '#f43f5e', stack: 'r' },
+            { type: 'bar', label: 'NISA%', data: curRes.rNisa, backgroundColor: '#6366f1', stack: 'r' },
+            { type: 'bar', label: '貯金純増%', data: curRes.rPureSavings, backgroundColor: '#3b82f6', stack: 'r' }
+          ]
+        },
+        options: {
+          responsive: false,
+          animation: false,
+          plugins: {
+            legend: { position: 'top', labels: { boxWidth: 10, font: { size: 7.5 } } }
+          },
+          scales: {
+            x: {
+              stacked: true,
+              ticks: { font: { size: 7 }, maxRotation: 45, autoSkip: calcYears > 10 }
+            },
+            y: {
+              stacked: true,
+              ticks: { font: { size: 7 }, callback: v => v + '%' }
+            }
+          }
+        }
+      });
+      document.getElementById('pdfRatioChartImg').src = cvsRatio.toDataURL('image/png');
+
+      // 4. オフスクリーン円グラフ
+      const cvsPie = document.getElementById('offscreenPieChart');
+      if (offPieChart) offPieChart.destroy();
+      const finalCashInc = Math.max(0, curRes.cashArr[curRes.cashArr.length - 1] || 0);
+      const totalAllocation = curRes.sLiv + curRes.sSpe + curRes.sNis + finalCashInc;
+      const pLiv = totalAllocation > 0 ? ((curRes.sLiv / totalAllocation) * 100).toFixed(1) : 0;
+      const pSpe = totalAllocation > 0 ? ((curRes.sSpe / totalAllocation) * 100).toFixed(1) : 0;
+      const pNis = totalAllocation > 0 ? ((curRes.sNis / totalAllocation) * 100).toFixed(1) : 0;
+      const pSav = totalAllocation > 0 ? ((finalCashInc / totalAllocation) * 100).toFixed(1) : 0;
+
+      offPieChart = new Chart(cvsPie.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+          labels: [`生活費: ${pLiv}%`, `特別支出: ${pSpe}%`, `NISA: ${pNis}%`, `普通預金: ${pSav}%`],
+          datasets: [{
+            data: [curRes.sLiv, curRes.sSpe, curRes.sNis, finalCashInc],
+            backgroundColor: ['#10b981', '#f43f5e', '#6366f1', '#3b82f6']
+          }]
+        },
+        options: {
+          responsive: false,
+          animation: false,
+          plugins: {
+            legend: { position: 'right', labels: { boxWidth: 10, font: { size: 8 } } }
+          }
+        }
+      });
+      document.getElementById('pdfPieChartImg').src = cvsPie.toDataURL('image/png');
+
+      // ライフステージ別生活費の展開
+      const phasesContainer = document.getElementById('pdfPhasesTable');
+      if (phasesContainer) {
+        let phtml = '';
+        phases.forEach(p => {
+          let itemsText = p.items ? p.items.map(it => `${it.name}: ¥${Number(it.amount).toLocaleString()}(${it.type==='monthly'?'月':'年'})`).join(', ') : 'なし';
+          phtml += `
+            <div class="border border-slate-200 rounded p-1 bg-slate-50/50">
+              <div class="font-bold text-slate-800 text-[8px]">${p.name} (${p.startYear}〜${p.endYear}年目)</div>
+              <div class="text-slate-600 text-[7px] mt-0.5 leading-snug">${itemsText}</div>
+            </div>
+          `;
+        });
+        phasesContainer.innerHTML = phtml;
+      }
+
+      // 特別支出・臨時収入の展開
+      const eventsContainer = document.getElementById('pdfEventsList');
+      if (eventsContainer) {
+        if (customEvents && customEvents.length > 0) {
+          eventsContainer.innerHTML = customEvents.map(ev => 
+            `<div>• ${ev.startYear}〜${ev.endYear}年目: <strong class="text-slate-800">${ev.name}</strong> ¥${Number(ev.amount).toLocaleString()} (${ev.type==='monthly'?'月額':'年額'})</div>`
+          ).join('');
+        } else {
+          eventsContainer.innerHTML = `<div class="text-slate-400">登録なし</div>`;
+        }
+      }
+
+      const extraContainer = document.getElementById('pdfExtraIncomesList');
+      if (extraContainer) {
+        if (extraIncomes && extraIncomes.length > 0) {
+          extraContainer.innerHTML = extraIncomes.map(ex => 
+            `<div>• ${ex.startYear}〜${ex.endYear}年目: <strong class="text-slate-800">${ex.name}</strong> ¥${Number(ex.amount).toLocaleString()} (${ex.type==='monthly'?'月額':'年額'}) [${ex.taxType==='taxable'?'給与加算':'手取合算'}]</div>`
+          ).join('');
+        } else {
+          extraContainer.innerHTML = `<div class="text-slate-400">登録なし</div>`;
+        }
+      }
+
+      // 3ページ目: 年次別詳細シミュレーション諸元表（完全展開）
+      const fullTableBody = document.getElementById('pdfFullDataTableBody');
+      if (fullTableBody) {
+        let tbodyHtml = '';
+        for (let i = 0; i < calcYears; i++) {
+          const item = salaryMaster[i] || { year: i+1, age: 24+i, grade: "主査", baseMonthly: 590000, otHours: 0 };
+          const curGross = curRes.grossArr[i];
+          const curTakeHome = curRes.incArr[i];
+          const curExp = curRes.expArr[i];
+          const curSavings = curRes.netCashflowArr[i];
+          const curCashInc = curRes.netSavingsArr[i];
+          const curCash = curRes.cashArr[i];
+          const curNisa = curRes.nisaArr[i];
+          const curTotal = curRes.totalArr[i];
+          const isDeficit = curCash < safetyLimit;
+
+          tbodyHtml += `
+            <tr class="${i % 2 === 1 ? 'bg-slate-50/70' : 'bg-white'}">
+              <td class="p-1 font-semibold text-slate-800">${item.year}年目(${item.age}歳)</td>
+              <td class="p-1 text-slate-600 truncate">${item.grade}</td>
+              <td class="p-1 text-right font-medium">¥${curGross.toLocaleString()}</td>
+              <td class="p-1 text-right font-bold text-blue-800">¥${curTakeHome.toLocaleString()}</td>
+              <td class="p-1 text-right font-medium text-rose-700">¥${curExp.toLocaleString()}</td>
+              <td class="p-1 text-right font-medium ${curSavings>=0?'text-blue-600':'text-rose-600'}">${curSavings>=0?'+':''}¥${cur600':'text-rose-600'}">${curSavings>=0?'+':''}¥${curSavings.toLocaleString()}</td>
+              <td class="p-1 text-right font-medium ${curCashInc>=0?'text-emerald-700':'text-rose-600'}">${curCashInc>=0?'+':''}¥${curCashInc.toLocaleString()}</td>
+              <td class="p-1 text-right font-bold ${isDeficit ? 'text-rose-600 bg-rose-50' : 'text-emerald-700'}">¥${curCash.toLocaleString()}</td>
+              <td class="p-1 text-right font-bold text-indigo-700">¥${curNisa.toLocaleString()}</td>
+              <td class="p-1 text-right font-bold text-blue-900">¥${curTotal.toLocaleString()}</td>
+            </tr>
+          `;
+        }
+        fullTableBody.innerHTML = tbodyHtml;
+      }
+    }
+
+    // Ctrl+P / 印刷ダイアログ起動時に自動で帳票レンダリング
+    window.addEventListener('beforeprint', renderPdfReport);
+
+    function prepareAndPrint() {
+      renderPdfReport();
+      setTimeout(() => {
+        window.print();
+      }, 150);
     }
   </script>
 </body>
