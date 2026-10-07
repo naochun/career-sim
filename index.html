@@ -14,40 +14,84 @@
     @media print {
       @page {
         size: A4 portrait;
-        margin: 10mm;
+        margin: 8mm 10mm;
+      }
+      *, *::before, *::after {
+        box-sizing: border-box !important;
       }
       body {
         background-color: #ffffff !important;
         padding: 0 !important;
-        color: #000000 !important;
-        font-size: 11px !important;
+        margin: 0 !important;
+        color: #0f172a !important;
+        font-size: 10px !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
       }
       .no-print { display: none !important; }
       .print-only { display: block !important; }
-      #resultTabContent, #inputTabContent { display: block !important; }
-      .page-break-before { page-break-before: always !important; }
-      .avoid-break { page-break-inside: avoid !important; }
+      
+      /* 設定タブは印刷から完全除外 */
+      #inputTabContent { display: none !important; }
+      #resultTabContent { display: block !important; }
+
+      /* 改ページ制御 */
+      .page-break-before {
+        page-break-before: always !important;
+        break-before: page !important;
+      }
+      .avoid-break {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+
+      /* カードと枠線 */
       .card {
         border: 1px solid #cbd5e1 !important;
         box-shadow: none !important;
-        margin-bottom: 0.8rem !important;
-        padding: 0.6rem !important;
+        border-radius: 6px !important;
+        margin-bottom: 6px !important;
+        padding: 6px 8px !important;
+        background-color: #ffffff !important;
+        overflow: visible !important;
       }
+
+      /* テーブルのA4幅完全収容 */
       table {
         width: 100% !important;
-        font-size: 8px !important;
+        font-size: 7.5px !important;
+        border-collapse: collapse !important;
+        table-layout: fixed !important;
       }
       th, td {
-        padding: 2.5px 3px !important;
+        padding: 2.5px 2px !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+        word-break: break-all !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+      }
+      th {
+        font-weight: 700 !important;
+      }
+
+      /* グラフエリアの印刷用2×2固定 */
+      .print-chart-grid {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px !important;
       }
       .chart-container {
-        height: 200px !important;
+        position: relative !important;
+        height: 165px !important;
         width: 100% !important;
       }
-      .grid {
+
+      /* サマリーカードの印刷用レイアウト */
+      .print-kpi-grid {
         display: grid !important;
+        grid-template-columns: repeat(4, 1fr) !important;
+        gap: 6px !important;
       }
     }
     .print-only { display: none; }
@@ -72,12 +116,12 @@
   <!-- シミュレーター本体 -->
   <div id="appScreen" class="max-w-7xl mx-auto space-y-4 hidden">
     <!-- 印刷用ヘッダー -->
-    <div class="print-only border-b border-slate-300 pb-2 mb-2">
+    <div class="print-only border-b border-slate-300 pb-1.5 mb-2">
       <div class="flex justify-between items-baseline">
-        <h1 class="text-lg font-bold text-slate-900">ライフプラン＆資産形成シミュレーション レポート</h1>
-        <span class="text-[10px] text-slate-500">出力日時: <span id="printDate"></span></span>
+        <h1 class="text-base font-bold text-slate-900">ライフプラン＆資産形成シミュレーション レポート</h1>
+        <span class="text-[9px] text-slate-500">出力日時: <span id="printDate"></span></span>
       </div>
-      <p class="text-[10px] text-slate-600 mt-0.5">対象シナリオ: <span id="printScenarioName" class="font-bold">標準プラン</span></p>
+      <p class="text-[9px] text-slate-600 mt-0.5">対象シナリオ: <span id="printScenarioName" class="font-bold text-slate-900">標準プラン</span></p>
     </div>
 
     <!-- Web操作用ヘッダー -->
@@ -87,13 +131,13 @@
           <h1 class="text-lg md:text-xl font-bold text-slate-900">キャリア＆資産形成シミュレーター</h1>
           <span id="syncStatus" class="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium">☁️ 同期完了</span>
         </div>
-        <p class="text-xs text-slate-500 mt-0.5">複数シナリオ保存 / A/B比較 / 臨時収入・課税区分 / 防衛資金対応</p>
+        <p class="text-xs text-slate-500 mt-0.5">複数シナリオ保存 / A/B比較 / 臨時収入対応 / 防衛資金対応</p>
       </div>
       <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
         <button onclick="toggleInflation()" id="inflationToggleBtn" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-3 rounded-lg border">
           表示: 名目額
         </button>
-        <button onclick="window.print()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs md:text-sm font-semibold py-2 px-3 rounded-lg shadow transition">
+        <button onclick="prepareAndPrint()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs md:text-sm font-semibold py-2 px-3 rounded-lg shadow transition">
           PDF出力
         </button>
         <button onclick="logout()" class="text-xs text-slate-400 hover:text-slate-600 px-1 py-1">ログアウト</button>
@@ -142,95 +186,96 @@
     </div>
 
     <!-- ==================== 出力・結果タブ ==================== -->
-    <div id="resultTabContent" class="space-y-5">
+    <div id="resultTabContent" class="space-y-4">
       <!-- 重要サマリー KPI カード -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 avoid-break">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 print-kpi-grid avoid-break">
         <div class="card bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
           <span class="text-[11px] text-slate-500 font-medium">最終到達 総純資産</span>
-          <div id="kpiFinalAsset" class="text-base md:text-xl font-bold text-blue-600 mt-1">0万円</div>
+          <div id="kpiFinalAsset" class="text-base md:text-xl font-bold text-blue-600 mt-0.5">0万円</div>
           <span id="kpiFinalYearText" class="text-[10px] text-slate-400">計算終了年時点</span>
         </div>
         <div class="card bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
           <span class="text-[11px] text-slate-500 font-medium">最終到達 運用残高(NISA)</span>
-          <div id="kpiFinalNisa" class="text-base md:text-xl font-bold text-indigo-600 mt-1">0万円</div>
+          <div id="kpiFinalNisa" class="text-base md:text-xl font-bold text-indigo-600 mt-0.5">0万円</div>
           <span class="text-[10px] text-slate-400">複利運用込み評価額</span>
         </div>
         <div class="card bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
           <span class="text-[11px] text-slate-500 font-medium">期間内 最低普通預金</span>
-          <div id="kpiMinCash" class="text-base md:text-xl font-bold text-emerald-600 mt-1">0万円</div>
+          <div id="kpiMinCash" class="text-base md:text-xl font-bold text-emerald-600 mt-0.5">0万円</div>
           <span id="kpiMinCashYear" class="text-[10px] text-slate-400">キャッシュの底</span>
         </div>
         <div class="card bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
           <span class="text-[11px] text-slate-500 font-medium">生涯手取り vs 総支出 (消費)</span>
-          <div id="kpiTotalFlow" class="text-base md:text-xl font-bold text-slate-700 mt-1">0万円 / 0万円</div>
+          <div id="kpiTotalFlow" class="text-base md:text-xl font-bold text-slate-700 mt-0.5 whitespace-nowrap">0万円 / 0万円</div>
           <span id="kpiSavingsRate" class="text-[10px] text-blue-600 font-semibold">平均貯蓄余力: 0%</span>
         </div>
       </div>
 
       <!-- 印刷用サマリー -->
-      <div class="print-only card bg-white p-3 rounded-lg border border-slate-300 text-xs avoid-break">
-        <h3 class="font-bold text-slate-900 border-b pb-1 mb-1.5 text-[11px]">【シミュレーション前提条件】</h3>
-        <div class="grid grid-cols-4 gap-1.5 text-[9.5px] mb-2" id="printConditionSummary"></div>
-        <div class="border-t pt-1.5">
-          <strong class="text-[9.5px] block mb-1 text-slate-800">各フェーズの支出内訳:</strong>
-          <div id="printPhasesSummary" class="grid grid-cols-2 gap-2 text-[8.5px] text-slate-700"></div>
+      <div class="print-only card bg-white p-2 rounded border border-slate-300 text-xs avoid-break">
+        <h3 class="font-bold text-slate-900 border-b pb-0.5 mb-1 text-[10px]">【シミュレーション前提条件】</h3>
+        <div class="grid grid-cols-4 gap-1 text-[8.5px] mb-1" id="printConditionSummary"></div>
+        <div class="border-t pt-1">
+          <strong class="text-[8.5px] block mb-0.5 text-slate-800">各フェーズの支出内訳:</strong>
+          <div id="printPhasesSummary" class="grid grid-cols-2 gap-1.5 text-[8px] text-slate-700"></div>
         </div>
       </div>
 
-      <!-- グラフエリア -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 card bg-white p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 avoid-break">
+      <!-- グラフエリア (印刷時は2x2で1ページ目下部に綺麗に収容) -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 card bg-white p-3 md:p-4 rounded-xl shadow-sm border border-slate-200 avoid-break print-chart-grid">
         <div>
-          <h3 class="font-bold text-xs md:text-sm mb-2 text-slate-800">■ 資産推移（純資産・現金・NISA・比較）</h3>
+          <h3 class="font-bold text-xs mb-1 text-slate-800">■ 資産推移（純資産・現金・NISA・比較）</h3>
           <div class="chart-container"><canvas id="assetChart"></canvas></div>
         </div>
         <div>
-          <h3 class="font-bold text-xs md:text-sm mb-2 text-slate-800">■ 年間収支（手取り＋税社保＝額面 vs 年間消費支出）</h3>
+          <h3 class="font-bold text-xs mb-1 text-slate-800">■ 年間収支（手取り＋税社保＝額面 vs 年間消費支出）</h3>
           <div class="chart-container"><canvas id="cashflowChart"></canvas></div>
         </div>
         <div>
-          <h3 class="font-bold text-xs md:text-sm mb-2 text-slate-800">■ 手取り収入の使途バランス割合推移 (%)</h3>
+          <h3 class="font-bold text-xs mb-1 text-slate-800">■ 手取り収入の使途バランス割合推移 (%)</h3>
           <div class="chart-container"><canvas id="ratioChart"></canvas></div>
         </div>
         <div>
-          <h3 class="font-bold text-xs md:text-sm mb-2 text-slate-800">■ 期間累計・支出＆貯金使途別シェア</h3>
+          <h3 class="font-bold text-xs mb-1 text-slate-800">■ 期間累計・支出＆貯金使途別シェア</h3>
           <div class="chart-container flex items-center justify-center"><canvas id="pieChart"></canvas></div>
         </div>
       </div>
 
+      <!-- 印刷時の2ページ目区切り -->
+      <div class="page-break-before"></div>
+
       <!-- テーブル1: 収入詳細 -->
-      <div class="card bg-white p-4 rounded-xl border border-slate-200 overflow-x-auto avoid-break">
-        <h3 class="font-bold text-xs md:text-sm mb-2 text-blue-700">■ 収入詳細分類表</h3>
+      <div class="card bg-white p-3.5 rounded-xl border border-slate-200 overflow-x-auto avoid-break">
+        <h3 class="font-bold text-xs md:text-sm mb-1.5 text-blue-700">■ 収入詳細分類表</h3>
         <table class="w-full text-left text-xs border-collapse">
           <thead>
             <tr class="bg-blue-50 border-b text-blue-900">
               <th class="p-1.5">年次(年齢)</th>
               <th class="p-1.5">等級</th>
-              <th class="p-1.5">基本月給</th>
-              <th class="p-1.5">残業代</th>
-              <th class="p-1.5">賞与</th>
-              <th class="p-1.5">臨時収入</th>
-              <th class="p-1.5 font-bold">額面年収</th>
-              <th class="p-1.5 font-bold text-blue-800">手取り年収</th>
+              <th class="p-1.5 text-right">基本月給</th>
+              <th class="p-1.5 text-right">残業代</th>
+              <th class="p-1.5 text-right">賞与</th>
+              <th class="p-1.5 text-right">臨時収入</th>
+              <th class="p-1.5 text-right font-bold">額面年収</th>
+              <th class="p-1.5 text-right font-bold text-blue-800">手取り年収</th>
             </tr>
           </thead>
           <tbody id="incomeTableBody" class="divide-y divide-slate-200"></tbody>
         </table>
       </div>
 
-      <div class="page-break-before"></div>
-
       <!-- テーブル2: 支出詳細 -->
-      <div class="card bg-white p-4 rounded-xl border border-slate-200 overflow-x-auto avoid-break">
-        <h3 class="font-bold text-xs md:text-sm mb-2 text-emerald-700">■ 支出詳細分類表（消費支出）</h3>
+      <div class="card bg-white p-3.5 rounded-xl border border-slate-200 overflow-x-auto avoid-break">
+        <h3 class="font-bold text-xs md:text-sm mb-1.5 text-emerald-700">■ 支出詳細分類表（消費支出）</h3>
         <table class="w-full text-left text-xs border-collapse">
           <thead>
             <tr class="bg-emerald-50 border-b text-emerald-900">
               <th class="p-1.5">年次(年齢)</th>
               <th class="p-1.5">適用フェーズ</th>
-              <th class="p-1.5">年間生活費</th>
+              <th class="p-1.5 text-right">年間生活費</th>
               <th class="p-1.5">特別支出・ローン</th>
-              <th class="p-1.5 font-bold text-emerald-900">年間総支出(消費)</th>
-              <th class="p-1.5 font-bold text-indigo-700">参考: NISA積立</th>
+              <th class="p-1.5 text-right font-bold text-emerald-900">年間総支出(消費)</th>
+              <th class="p-1.5 text-right font-bold text-indigo-700">参考: NISA積立</th>
             </tr>
           </thead>
           <tbody id="expenseTableBody" class="divide-y divide-slate-200"></tbody>
@@ -238,20 +283,20 @@
       </div>
 
       <!-- テーブル3: 資産推移 -->
-      <div class="card bg-white p-4 rounded-xl border border-slate-200 overflow-x-auto avoid-break">
-        <h3 class="font-bold text-xs md:text-sm mb-2 text-purple-700">■ 資産推移詳細表</h3>
+      <div class="card bg-white p-3.5 rounded-xl border border-slate-200 overflow-x-auto avoid-break">
+        <h3 class="font-bold text-xs md:text-sm mb-1.5 text-purple-700">■ 資産推移詳細表</h3>
         <table class="w-full text-left text-xs border-collapse">
           <thead>
             <tr class="bg-purple-50 border-b text-purple-900">
               <th class="p-1.5">年次(年齢)</th>
-              <th class="p-1.5 font-semibold text-slate-700">額面年収</th>
-              <th class="p-1.5 font-semibold text-blue-700">手取り年収</th>
-              <th class="p-1.5 font-semibold text-rose-700">年間総支出</th>
-              <th class="p-1.5 font-semibold text-blue-700">純貯蓄余力 (手取-支出)</th>
-              <th class="p-1.5 font-semibold text-emerald-600">預金増減 (余力-NISA)</th>
-              <th class="p-1.5 font-bold text-emerald-700">普通預金残高</th>
-              <th class="p-1.5 font-bold text-indigo-700">NISA残高</th>
-              <th class="p-1.5 font-bold text-blue-800">総純資産</th>
+              <th class="p-1.5 text-right font-semibold text-slate-700">額面年収</th>
+              <th class="p-1.5 text-right font-semibold text-blue-700">手取り年収</th>
+              <th class="p-1.5 text-right font-semibold text-rose-700">年間総支出</th>
+              <th class="p-1.5 text-right font-semibold text-blue-700">純貯蓄余力</th>
+              <th class="p-1.5 text-right font-semibold text-emerald-600">預金増減</th>
+              <th class="p-1.5 text-right font-bold text-emerald-700">普通預金残高</th>
+              <th class="p-1.5 text-right font-bold text-indigo-700">NISA残高</th>
+              <th class="p-1.5 text-right font-bold text-blue-800">総純資産</th>
             </tr>
           </thead>
           <tbody id="assetTableBody" class="divide-y divide-slate-200"></tbody>
@@ -358,7 +403,7 @@
             <h2 class="font-bold text-xs md:text-sm text-amber-700 flex items-center gap-1.5">
               <span>🎁</span> 4. 臨時収入設定（単発 / 期間指定）
             </h2>
-            <p class="text-[11px] text-slate-500">ボーナス以外の臨時収入（遺産、退職金、祝い金、副業等）。税引後(手取)か給与加算(課税)を選択可能</p>
+            <p class="text-[11px] text-slate-500">ボーナス以外の臨時収入（遺産、退職金、祝い金、副業等）。手取(税引後)か給与加算(課税)を選択可能</p>
           </div>
           <button onclick="addExtraIncomeRow()" class="bg-amber-600 text-white text-[11px] px-2 py-1 rounded font-semibold hover:bg-amber-700">+ 追加</button>
         </div>
@@ -458,16 +503,28 @@
         inputEl.classList.add('hidden');
         btnResult.className = "py-2.5 px-5 font-bold text-sm border-b-2 border-blue-600 text-blue-600 transition flex items-center gap-1.5";
         btnInput.className = "py-2.5 px-5 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition flex items-center gap-1.5";
-        if (assetChart) assetChart.resize();
-        if (cfChart) cfChart.resize();
-        if (ratioChart) ratioChart.resize();
-        if (pieChart) pieChart.resize();
+        resizeAllCharts();
       } else {
         resultEl.classList.add('hidden');
         inputEl.classList.remove('hidden');
         btnInput.className = "py-2.5 px-5 font-bold text-sm border-b-2 border-blue-600 text-blue-600 transition flex items-center gap-1.5";
         btnResult.className = "py-2.5 px-5 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition flex items-center gap-1.5";
       }
+    }
+
+    function resizeAllCharts() {
+      if (assetChart) assetChart.resize();
+      if (cfChart) cfChart.resize();
+      if (ratioChart) ratioChart.resize();
+      if (pieChart) pieChart.resize();
+    }
+
+    function prepareAndPrint() {
+      switchMainTab('result');
+      setTimeout(() => {
+        resizeAllCharts();
+        window.print();
+      }, 150);
     }
 
     const defaultNisaBlocks = [
@@ -951,6 +1008,7 @@
 
     let assetChart = null, cfChart = null, ratioChart = null, pieChart = null;
 
+    // 【元の正確な税金計算ロジックを完全維持】
     function calculateAccurateNetIncome(gross, year) {
       if (gross <= 0) return 0;
       const siRate = gross > 10000000 ? 0.138 : 0.148;
@@ -1004,7 +1062,7 @@
         let bonM = baseM * bonusM;
         if (i === 0) bonM = baseM * 3.0;
 
-        // 臨時収入の計算（給与加算 vs 税引後直接加算）
+        // 臨時収入の集計
         let taxableExtra = 0;
         let afterTaxExtra = 0;
         if (customExtraIncomes) {
@@ -1022,10 +1080,14 @@
           });
         }
 
-        const gross = (baseM * 12) + (otM * 12) + bonM + taxableExtra;
-        const takeHomeFromSalary = calculateAccurateNetIncome(gross, item.year);
+        // 課税対象の臨時収入は給与額面に加算して元の税金計算関数を通す
+        const grossForTax = (baseM * 12) + (otM * 12) + bonM + taxableExtra;
+        const takeHomeFromSalary = calculateAccurateNetIncome(grossForTax, item.year);
+        
+        // 手取り(税引後)指定の臨時収入を合算
         const totalTakeHome = takeHomeFromSalary + afterTaxExtra;
-        const taxAndDeductions = gross - takeHomeFromSalary;
+        const totalGross = grossForTax + afterTaxExtra;
+        const taxAndDeductions = Math.max(0, totalGross - totalTakeHome);
 
         totEarned += totalTakeHome;
 
@@ -1086,7 +1148,7 @@
         totalArr.push(Math.round(totAsset * dFactor));
         nisaArr.push(Math.round(nisa * dFactor));
         cashArr.push(Math.round(cash * dFactor));
-        grossArr.push(Math.round(gross * dFactor));
+        grossArr.push(Math.round(totalGross * dFactor));
         incArr.push(Math.round(totalTakeHome * dFactor));
         taxArr.push(Math.round(taxAndDeductions * dFactor));
         expArr.push(Math.round(consumptionExpense * dFactor));
@@ -1146,7 +1208,7 @@
         phases.forEach(p => {
           let itemsText = p.items ? p.items.map(it => `${it.name}: ¥${it.amount.toLocaleString()}(${it.type==='monthly'?'月':'年'})`).join(', ') : 'なし';
           phtml += `
-            <div class="border-b border-slate-200 pb-1">
+            <div class="border-b border-slate-200 pb-0.5">
               <span class="font-bold text-slate-800">${p.name} (${p.startYear}〜${p.endYear}年目):</span>
               <span class="text-slate-600">${itemsText}</span>
             </div>
@@ -1215,35 +1277,35 @@
           incTbody.innerHTML += `<tr>
             <td class="p-1.5">${item.year}年目(${item.age}歳)</td>
             <td class="p-1.5">${item.grade}</td>
-            <td class="p-1.5">¥${Math.round(baseM*dFactor).toLocaleString()}</td>
-            <td class="p-1.5">${item.hasOt ? '¥'+Math.round(otM*dFactor).toLocaleString() : '-'}</td>
-            <td class="p-1.5">¥${Math.round(bonM*dFactor).toLocaleString()}</td>
-            <td class="p-1.5 text-amber-700 font-semibold">${curExtra > 0 ? '¥'+curExtra.toLocaleString() : '-'}</td>
-            <td class="p-1.5 font-semibold">¥${curGross.toLocaleString()}</td>
-            <td class="p-1.5 font-bold text-blue-800">¥${curTakeHome.toLocaleString()}</td>
+            <td class="p-1.5 text-right">¥${Math.round(baseM*dFactor).toLocaleString()}</td>
+            <td class="p-1.5 text-right">${item.hasOt ? '¥'+Math.round(otM*dFactor).toLocaleString() : '-'}</td>
+            <td class="p-1.5 text-right">¥${Math.round(bonM*dFactor).toLocaleString()}</td>
+            <td class="p-1.5 text-right text-amber-700 font-semibold">${curExtra > 0 ? '¥'+curExtra.toLocaleString() : '-'}</td>
+            <td class="p-1.5 text-right font-semibold">¥${curGross.toLocaleString()}</td>
+            <td class="p-1.5 text-right font-bold text-blue-800">¥${curTakeHome.toLocaleString()}</td>
           </tr>`;
         }
         if (expTbody) {
           expTbody.innerHTML += `<tr>
             <td class="p-1.5">${item.year}年目(${item.age}歳)</td>
             <td class="p-1.5 text-emerald-700">${matchedPhase}</td>
-            <td class="p-1.5">¥${Math.round(annLiv*dFactor).toLocaleString()}</td>
+            <td class="p-1.5 text-right">¥${Math.round(annLiv*dFactor).toLocaleString()}</td>
             <td class="p-1.5 text-rose-600">${speDesc.length ? speDesc.join(', ') : '-'}</td>
-            <td class="p-1.5 font-bold text-emerald-900">¥${curExp.toLocaleString()}</td>
-            <td class="p-1.5 font-semibold text-indigo-700">¥${curNisaYear.toLocaleString()}</td>
+            <td class="p-1.5 text-right font-bold text-emerald-900">¥${curExp.toLocaleString()}</td>
+            <td class="p-1.5 text-right font-semibold text-indigo-700">¥${curNisaYear.toLocaleString()}</td>
           </tr>`;
         }
         if (astTbody) {
           astTbody.innerHTML += `<tr>
             <td class="p-1.5">${item.year}年目(${item.age}歳)</td>
-            <td class="p-1.5 font-medium text-slate-700">¥${curGross.toLocaleString()}</td>
-            <td class="p-1.5 font-bold text-blue-800">¥${curTakeHome.toLocaleString()}</td>
-            <td class="p-1.5 font-bold text-rose-700">¥${curExp.toLocaleString()}</td>
-            <td class="p-1.5 font-semibold ${netSavings>=0?'text-blue-600':'text-rose-600'}">${netSavings>=0?'+':''}¥${netSavings.toLocaleString()}</td>
-            <td class="p-1.5 font-semibold ${netCashInc>=0?'text-emerald-700':'text-rose-600'}">${netCashInc>=0?'+':''}¥${netCashInc.toLocaleString()}</td>
-            <td class="p-1.5 font-bold ${curCash<safetyLimit?'text-rose-600 bg-rose-50':'text-emerald-700'}">¥${curCash.toLocaleString()}</td>
-            <td class="p-1.5 font-bold text-indigo-700">¥${curRes.nisaArr[i].toLocaleString()}</td>
-            <td class="p-1.5 font-bold text-blue-800">¥${curRes.totalArr[i].toLocaleString()}</td>
+            <td class="p-1.5 text-right font-medium text-slate-700">¥${curGross.toLocaleString()}</td>
+            <td class="p-1.5 text-right font-bold text-blue-800">¥${curTakeHome.toLocaleString()}</td>
+            <td class="p-1.5 text-right font-bold text-rose-700">¥${curExp.toLocaleString()}</td>
+            <td class="p-1.5 text-right font-semibold ${netSavings>=0?'text-blue-600':'text-rose-600'}">${netSavings>=0?'+':''}¥${netSavings.toLocaleString()}</td>
+            <td class="p-1.5 text-right font-semibold ${netCashInc>=0?'text-emerald-700':'text-rose-600'}">${netCashInc>=0?'+':''}¥${netCashInc.toLocaleString()}</td>
+            <td class="p-1.5 text-right font-bold ${curCash<safetyLimit?'text-rose-600 bg-rose-50':'text-emerald-700'}">¥${curCash.toLocaleString()}</td>
+            <td class="p-1.5 text-right font-bold text-indigo-700">¥${curRes.nisaArr[i].toLocaleString()}</td>
+            <td class="p-1.5 text-right font-bold text-blue-800">¥${curRes.totalArr[i].toLocaleString()}</td>
           </tr>`;
         }
       }
@@ -1255,13 +1317,13 @@
       const totalExpenseMan = Math.round(curRes.totConsumption / 10000);
 
       const elFinalAsset = document.getElementById('kpiFinalAsset');
-      if (elFinalAsset) elFinalAsset.innerText = `${finalAssetVal.toLocaleString()}万円`;
+      if (elFinalAsset) elFinalAsset.innerText = `${(finalAssetVal < 0 ? '-' : '') + Math.abs(finalAssetVal).toLocaleString()}万円`;
 
       const elFinalNisa = document.getElementById('kpiFinalNisa');
       if (elFinalNisa) elFinalNisa.innerText = `${finalNisaVal.toLocaleString()}万円`;
 
       const elMinCash = document.getElementById('kpiMinCash');
-      if (elMinCash) elMinCash.innerText = `${minCashVal.toLocaleString()}万円`;
+      if (elMinCash) elMinCash.innerText = `${(minCashVal < 0 ? '-' : '') + Math.abs(minCashVal).toLocaleString()}万円`;
 
       const elMinCashYear = document.getElementById('kpiMinCashYear');
       if (elMinCashYear) elMinCashYear.innerText = `到達: ${curRes.minCYear}年目時点`;
