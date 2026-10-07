@@ -98,10 +98,15 @@
       <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">🔒</div>
       <h2 class="text-xl font-bold text-slate-900 mb-2">キャリア＆資産シミュレーター</h2>
       <p class="text-xs text-slate-500 mb-6">Googleアカウントでログインして利用を開始します。</p>
+      
       <button onclick="loginWithGoogle()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 px-4 rounded-xl shadow flex items-center justify-center gap-2 text-sm transition">
         <span>Googleでサインイン</span>
       </button>
-      <div id="authError" class="text-xs text-rose-500 mt-3 hidden"></div>
+      <button onclick="loginAsGuest()" class="w-full mt-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2 px-4 rounded-xl text-xs transition border border-slate-300">
+        <span>ゲストとして利用（ログインをスキップ）</span>
+      </button>
+
+      <div id="authError" class="text-xs text-rose-600 bg-rose-50 p-2.5 rounded-lg border border-rose-200 mt-3 text-left hidden space-y-1"></div>
     </div>
   </div>
 
@@ -135,7 +140,7 @@
         <select id="scenarioSelect" onchange="onScenarioChange()" class="p-1.5 border rounded-lg bg-white font-semibold text-slate-800 min-w-[160px] shadow-sm">
           <option value="default">標準プラン (デフォルト)</option>
         </select>
-        <button onclick="saveCurrentScenario()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-lg shadow transition flex items-center gap-1">
+        <button onclick="saveCurrentScenario()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-lg shadow transition flex items-center gap-1.5">
           💾 上書き保存
         </button>
         <button onclick="saveAsNewScenario()" class="bg-white hover:bg-slate-50 text-blue-700 border border-blue-300 font-semibold px-3 py-1.5 rounded-lg shadow-sm transition">
@@ -585,12 +590,36 @@
     const db = firebase.firestore();
 
     function loginWithGoogle() {
+      const errEl = document.getElementById('authError');
+      if (errEl) {
+        errEl.classList.add('hidden');
+        errEl.innerHTML = '';
+      }
       const provider = new firebase.auth.GoogleAuthProvider();
       auth.signInWithPopup(provider).catch(err => {
-        const errEl = document.getElementById('authError');
-        errEl.innerText = err.message;
+        if (!errEl) return;
+        let helpText = err.message;
+        if (err.code === 'auth/unauthorized-domain') {
+          helpText = `<strong>【未承認ドメインエラー】</strong><br>現在のドメイン（${window.location.hostname || 'ローカルファイル'}）がFirebaseで許可されていません。<br>Firebaseコンソールの Authentication > 設定 > 承認済みドメイン に「${window.location.hostname}」を追加してください。`;
+        } else if (err.code === 'auth/operation-not-supported-in-this-environment' || window.location.protocol === 'file:') {
+          helpText = `<strong>【ローカルファイル実行エラー】</strong><br>ファイルを直接ブラウザで開いているためGoogle認証が動作しません。<br>「ゲストとして利用」ボタンを押してご利用いただくか、Webサーバー上で開いてください。`;
+        } else if (err.code === 'auth/popup-blocked') {
+          helpText = `<strong>【ポップアップ遮断】</strong><br>ブラウザによってログインウィンドウがブロックされました。アドレスバーの設定からポップアップを許可してください。`;
+        }
+        errEl.innerHTML = `<div class="font-bold text-[11px]">${err.code || '認証エラー'}</div><div class="text-[10px] leading-relaxed mt-0.5">${helpText}</div>`;
         errEl.classList.remove('hidden');
       });
+    }
+
+    function loginAsGuest() {
+      document.getElementById('authScreen').classList.add('hidden');
+      const app = document.getElementById('appScreen');
+      app.classList.remove('hidden');
+      document.getElementById('syncStatus').innerText = "💻 ゲスト・ローカル動作中";
+      allScenariosMap["default"] = getCurrentFormData("標準プラン");
+      updateScenarioDropdowns();
+      renderAllEditors();
+      calculate();
     }
 
     function logout() {
@@ -602,9 +631,13 @@
         document.getElementById('authScreen').classList.add('hidden');
         const app = document.getElementById('appScreen');
         app.classList.remove('hidden');
-        renderAllEditors();
-        calculate();
-        initScenarioManager();
+        try {
+          renderAllEditors();
+          calculate();
+          initScenarioManager();
+        } catch (e) {
+          console.error("Initialization error:", e);
+        }
       } else {
         document.getElementById('authScreen').classList.remove('hidden');
         document.getElementById('appScreen').classList.add('hidden');
@@ -1517,11 +1550,12 @@
         });
       }
 
-      // Web画面用 グラフ3: 使途バランス
+      // Web画面用 グラフ3: 使途バランス (type: 'bar' を確実に定義)
       const canvasRatio = document.getElementById('ratioChart');
       if (canvasRatio && canvasRatio.offsetParent !== null) {
         if (ratioChart) ratioChart.destroy();
         ratioChart = new Chart(canvasRatio.getContext('2d'), {
+          type: 'bar',
           data: {
             labels: labels,
             datasets: [
@@ -1764,10 +1798,11 @@
       });
       document.getElementById('pdfCfChartImg').src = cvsCf.toDataURL('image/png');
 
-      // 3. オフスクリーン使途バランスチャート
+      // 3. オフスクリーン使途バランスチャート (type: 'bar' を確実に定義)
       const cvsRatio = document.getElementById('offscreenRatioChart');
       if (offRatioChart) offRatioChart.destroy();
       offRatioChart = new Chart(cvsRatio.getContext('2d'), {
+        type: 'bar',
         data: {
           labels: labels,
           datasets: [
@@ -1899,7 +1934,7 @@
               <td class="p-1 text-right font-medium">¥${curGross.toLocaleString()}</td>
               <td class="p-1 text-right font-bold text-blue-800">¥${curTakeHome.toLocaleString()}</td>
               <td class="p-1 text-right font-medium text-rose-700">¥${curExp.toLocaleString()}</td>
-              <td class="p-1 text-right font-medium ${curSavings>=0?'text-blue-600':'text-rose-600'}">${curSavings>=0?'+':''}¥${cur600':'text-rose-600'}">${curSavings>=0?'+':''}¥${curSavings.toLocaleString()}</td>
+              <td class="p-1 text-right font-medium ${curSavings>=0?'text-blue-600':'text-rose-600'}">${curSavings>=0?'+':''}¥${curSavings.toLocaleString()}</td>
               <td class="p-1 text-right font-medium ${curCashInc>=0?'text-emerald-700':'text-rose-600'}">${curCashInc>=0?'+':''}¥${curCashInc.toLocaleString()}</td>
               <td class="p-1 text-right font-bold ${isDeficit ? 'text-rose-600 bg-rose-50' : 'text-emerald-700'}">¥${curCash.toLocaleString()}</td>
               <td class="p-1 text-right font-bold text-indigo-700">¥${curNisa.toLocaleString()}</td>
