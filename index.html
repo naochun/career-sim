@@ -436,7 +436,7 @@
        3. PDF専用 印刷レポート (A4専用帳票レイアウト)
        ======================================================== -->
   <div id="pdfReportView">
-    <!-- ===== PAGE 1: 診断エグゼクティブサマリー ＆ 長期資産推移 ===== -->
+    <!-- ===== PAGE 1: 診断エグゼクティブサマリー、長期資産推移 ＆ 詳細データ表 ===== -->
     <div class="pdf-page">
       <!-- レポート表紙ヘッダー -->
       <div class="flex justify-between items-end border-b-2 border-slate-900 pb-2 mb-2.5">
@@ -482,7 +482,7 @@
       </div>
 
       <!-- グラフ1: 資産形成推移 (全幅 横幅760pxで文字被りを完全解消) -->
-      <div class="border border-slate-200 rounded p-2 bg-white">
+      <div class="border border-slate-200 rounded p-2 bg-white mb-2.5">
         <div class="flex justify-between items-center mb-1">
           <div class="font-bold text-[10px] text-slate-900">■ 資産形成推移（総純資産・新NISA残高・手元普通預金）</div>
           <div class="text-[7.5px] text-slate-500">※全幅表示により年次ラベル・推移曲線を最適化</div>
@@ -490,6 +490,38 @@
         <div class="w-full flex justify-center">
           <img id="pdfAssetChartImg" class="w-full h-auto" alt="資産推移グラフ">
         </div>
+      </div>
+
+      <!-- 年次別詳細シミュレーション諸元表 (旧PAGE 3から移動) -->
+      <div class="border-b border-slate-300 pb-1 mb-2 flex justify-between items-baseline mt-3">
+        <div class="font-bold text-[11px] text-slate-800">■ 年次別 シミュレーション詳細データ一覧</div>
+        <div class="text-[7.5px] text-slate-500">※スクロールなし・全年次完全印字</div>
+      </div>
+
+      <div class="border border-slate-300 rounded overflow-hidden">
+        <table class="pdf-table">
+          <thead>
+            <tr>
+              <th style="width: 10%;">年次(年齢)</th>
+              <th style="width: 12%;">等級名</th>
+              <th style="width: 9%; text-align: right;">額面年収</th>
+              <th style="width: 9%; text-align: right; color: #1e40af;">手取り年収</th>
+              <th style="width: 9%; text-align: right; color: #b91c1c;">年間総支出</th>
+              <th style="width: 9%; text-align: right; color: #2563eb;">純貯蓄余力</th>
+              <th style="width: 9%; text-align: right; color: #047857;">預金増減</th>
+              <th style="width: 11%; text-align: right; color: #065f46;">普通預金残高</th>
+              <th style="width: 11%; text-align: right; color: #4338ca;">NISA残高</th>
+              <th style="width: 11%; text-align: right; color: #1e3a8a;">総純資産</th>
+            </tr>
+          </thead>
+          <tbody id="pdfFullDataTableBody"></tbody>
+        </table>
+      </div>
+
+      <!-- 帳票注記 -->
+      <div class="mt-2 text-[7px] text-slate-500 leading-tight">
+        ※本報告書の試算結果は、入力された条件及び日本の現行税制・社会保険制度に基づくモデル試算であり、将来の昇給実績・税制改正・運用実績等を保証するものではありません。<br>
+        ※NISA残高は年利複利計算（各年末評価）です。普通預金残高は利息を考慮していません。
       </div>
     </div>
 
@@ -536,40 +568,6 @@
             <div id="pdfExtraIncomesList" class="space-y-0.5 text-slate-700"></div>
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- ===== PAGE 3: 年次別詳細シミュレーション諸元表（完全展開帳票） ===== -->
-    <div class="pdf-page pdf-page-break">
-      <div class="border-b border-slate-300 pb-1 mb-2 flex justify-between items-baseline">
-        <div class="font-bold text-[11px] text-slate-800">■ 年次別 シミュレーション詳細データ一覧（全期間展開帳票）</div>
-        <div class="text-[7.5px] text-slate-500">※スクロールなし・全年次完全印字</div>
-      </div>
-
-      <div class="border border-slate-300 rounded overflow-hidden">
-        <table class="pdf-table">
-          <thead>
-            <tr>
-              <th style="width: 10%;">年次(年齢)</th>
-              <th style="width: 12%;">等級名</th>
-              <th style="width: 9%; text-align: right;">額面年収</th>
-              <th style="width: 9%; text-align: right; color: #1e40af;">手取り年収</th>
-              <th style="width: 9%; text-align: right; color: #b91c1c;">年間総支出</th>
-              <th style="width: 9%; text-align: right; color: #2563eb;">純貯蓄余力</th>
-              <th style="width: 9%; text-align: right; color: #047857;">預金増減</th>
-              <th style="width: 11%; text-align: right; color: #065f46;">普通預金残高</th>
-              <th style="width: 11%; text-align: right; color: #4338ca;">NISA残高</th>
-              <th style="width: 11%; text-align: right; color: #1e3a8a;">総純資産</th>
-            </tr>
-          </thead>
-          <tbody id="pdfFullDataTableBody"></tbody>
-        </table>
-      </div>
-
-      <!-- 帳票注記 -->
-      <div class="mt-2 text-[7px] text-slate-500 leading-tight">
-        ※本報告書の試算結果は、入力された条件及び日本の現行税制・社会保険制度に基づくモデル試算であり、将来の昇給実績・税制改正・運用実績等を保証するものではありません。<br>
-        ※NISA残高は年利複利計算（各年末評価）です。普通預金残高は利息を考慮していません。
       </div>
     </div>
   </div>
@@ -1206,8 +1204,10 @@
 
         const otRate = (baseM / 160) * 1.25;
         const otM = item.hasOt ? otRate * (Number(item.otHours) || 0) : 0;
+        
+        // ★修正点1: 1年目の賞与を半分にする
         let bonM = baseM * bonusM;
-        if (i === 0) bonM = baseM * 3.0;
+        if (i === 0) bonM = baseM * (bonusM / 2);
 
         // 臨時収入の集計
         let taxableExtra = 0;
@@ -1353,8 +1353,10 @@
         if (isAutoBear) baseM = baseM * Math.pow(1 + bearRate, i);
 
         const otM = item.hasOt ? (baseM / 160) * 1.25 * (Number(item.otHours) || 0) : 0;
+        
+        // ★修正点1: 1年目の賞与を半分にする（表・グラフ描画用）
         let bonM = baseM * bonusMonths;
-        if (i === 0) bonM = baseM * 3.0;
+        if (i === 0) bonM = baseM * (bonusMonths / 2);
 
         let matchedPhase = "未設定", annLiv = 0;
         for (let p of phases) {
@@ -1911,7 +1913,7 @@
         }
       }
 
-      // 3ページ目: 年次別詳細シミュレーション諸元表（完全展開）
+      // ★修正点3: 1ページ目に移動した詳細データ表へのデータ挿入
       const fullTableBody = document.getElementById('pdfFullDataTableBody');
       if (fullTableBody) {
         let tbodyHtml = '';
